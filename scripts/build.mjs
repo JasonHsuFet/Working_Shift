@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DATA = path.join(ROOT, 'data');
 const DIST = path.join(ROOT, 'dist');
-const DB_FILE = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
+export const DB_FILE = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
 const SITE_FILES = ['index.html', 'app.js', 'schedule-core.js', 'style.css'];
 
 const SHIFT_TYPES = {
@@ -18,12 +18,25 @@ const SHIFT_TYPES = {
 };
 const TIME_ALIASES = { 'T早': '早', 'T中': '中', M1: '1', '大夜': '3', '小夜': '2', '日': '1' };
 const REST_CODES = new Set(['X', 'Y', 'Z', 'S', 'T']);
+// Codes listed together in the roster, colors and roster labels; the page reads these from shifts[code].
+const ROSTER_GROUPS = { M1: '1', 'T早': '早', 'T中': '中' };
+const COLORS = {
+    '1': 'morning', M1: 'morning', '早': 'morning', 'T早': 'morning', '日': 'morning',
+    '2': 'afternoon', M2: 'afternoon', '中': 'afternoon', 'T中': 'afternoon', '小夜': 'afternoon',
+    '3': 'night', '晚': 'night', '大夜': 'night'
+};
+const GROUP_LABELS = { '1': 'Mobile 早班', '早': 'TX 早班', '中': 'TX 中班' };
 
 function text(value) {
     return value == null ? '' : String(value).trim();
 }
 
-function sheetRows(workbook, name) {
+// ponytail: sheetRows cap, since some sheets claim 1,048,576 used rows; raise it if staff tables ever pass 1000 rows
+export function readWorkbook(file) {
+    return XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000 });
+}
+
+export function sheetRows(workbook, name) {
     return XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '', raw: true });
 }
 
@@ -91,12 +104,13 @@ export function parseMonthSheet(rows, year, month, ids, defs) {
     const warnings = new Set();
     for (let index = header.index + 1; index < rows.length; index++) {
         const row = rows[index];
-        if (text(row[totalCol]) === '') break; // summary tables below the staff rows have no Total
         const name = text(row[nameCol]);
+        // summary tables below the staff rows have no Total and start with a shift-code row ("1")
+        if (text(row[totalCol]) === '' && Object.hasOwn(SHIFT_TYPES, name)) break;
         if (!name || !dates.some((_, day) => text(row[header.dayCol + day]))) continue;
         const empId = ids.get(name);
         if (!empId) {
-            console.warn(`warning: ${monthKey} ${name} 在工號表找不到工號，未納入`); // build log only, not the page banner
+            warnings.add(`${name} 在工號表找不到工號，未納入`);
             continue;
         }
         if (employees.has(empId)) throw new Error(`${monthKey} 第 ${index + 1} 列：工號 ${empId}（${name}）重複出現`);
@@ -108,38 +122,36 @@ export function parseMonthSheet(rows, year, month, ids, defs) {
             if (!type) throw new Error(`${monthKey} 無法辨識班別：第 ${index + 1} 列 ${date}「${code}」`);
             const rest = REST_CODES.has(code);
             const timeDef = defs.get(SHIFT_TYPES[TIME_ALIASES[code] || code]);
-            shifts[code] = { type, label: defs.get(type)?.label || type, rest, start: rest ? null : timeDef?.start || null, end: rest ? null : timeDef?.end || null };
+            const group = ROSTER_GROUPS[code] || code;
+            const label = GROUP_LABELS[group] || (defs.get(type)?.label || type).replaceAll('NNOC', 'NOC').replace(/^NOC-/, '');
+            shifts[code] = { type, label, group, color: COLORS[code] || null, rest, start: rest ? null : timeDef?.start || null, end: rest ? null : timeDef?.end || null };
             if (!rest && (!shifts[code].start || !shifts[code].end)) warnings.add(`班別 ${code} (${type}) 缺少時間，未納入當前值班判斷`);
             records.push({ empId, date, code });
         });
     }
     if (!records.length) throw new Error(`${monthKey} 沒有任何可用排班`);
-    return {
-        schemaVersion: 1, generatedAt: new Date().toISOString(), timeZone: 'Asia/Taipei',
-        range: { start: dates[0], end: dates.at(-1) }, dates, shifts,
-        employees: [...employees.values()], records, warnings: [...warnings]
-    };
+    return { dates, shifts, employees: [...employees.values()], records, warnings: [...warnings] };
 }
 
 function build() {
-    const { ids, defs, warnings: dbWarnings } = readLookups(XLSX.read(fs.readFileSync(path.join(DATA, DB_FILE))));
-    dbWarnings.forEach(warning => console.warn(`warning: ${warning}`));
+    const { ids, defs, warnings: dbWarnings } = readLookups(readWorkbook(DB_FILE));
     fs.rmSync(DIST, { recursive: true, force: true });
     fs.mkdirSync(path.join(DIST, 'data'), { recursive: true });
     const months = [];
     for (const file of fs.readdirSync(DATA).sort()) {
         const year = Number(/^All_(\d{4})\.xlsx$/.exec(file)?.[1]);
         if (!year) continue;
-        // ponytail: sheetRows cap, since some sheets claim 1,048,576 used rows; raise it if staff tables ever pass 1000 rows
-        const workbook = XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000 });
+        const workbook = readWorkbook(file);
         for (const sheet of workbook.SheetNames) {
             const month = /^(0[1-9]|1[0-2])$/.test(sheet.trim()) ? Number(sheet) : 0;
-            const data = month && parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs);
-            if (!data) {
+            if (!month) {
                 console.warn(`warning: ${file} 工作表「${sheet}」不是月份班表，已略過`);
                 continue;
             }
-            const key = data.range.start.slice(0, 7);
+            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs);
+            if (!data) throw new Error(`${file} 工作表「${sheet}」前 10 列找不到日期欄（1、2、3…）`);
+            data.warnings.unshift(...dbWarnings);
+            const key = data.dates[0].slice(0, 7);
             if (months.includes(key)) throw new Error(`${key} 重複出現在多個檔案`);
             months.push(key);
             data.warnings.forEach(warning => console.warn(`warning: ${warning}`));
@@ -152,4 +164,4 @@ function build() {
     for (const file of SITE_FILES) fs.copyFileSync(path.join(ROOT, file), path.join(DIST, file));
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) build();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) build();

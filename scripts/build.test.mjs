@@ -1,24 +1,55 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import * as XLSX from 'xlsx';
-import { readLookups, parseMonthSheet } from './build.mjs';
+import { DB_FILE, readWorkbook, sheetRows, readLookups, parseMonthSheet } from './build.mjs';
 
-const read = file => XLSX.read(fs.readFileSync(new URL(`../data/${file}`, import.meta.url)));
-const rows = (workbook, sheet) => XLSX.utils.sheet_to_json(workbook.Sheets[sheet], { header: 1, defval: '', raw: true });
-const { ids, defs } = readLookups(read('TPKC_NNOC班表模板_V1_3_DB版.xlsm'));
-const book = read('All_2026.xlsx');
+// Checks shape only, so uploading a changed schedule never breaks the deploy.
+const { ids, defs } = readLookups(readWorkbook(DB_FILE));
+const SUMMARY_NAMES = ['1', '早', 'N', 'OFF (X)', 'Total', 'Leader', 'On Job'];
+let months = 0;
+for (const file of fs.readdirSync(new URL('../data/', import.meta.url))) {
+    const year = Number(/^All_(\d{4})\.xlsx$/.exec(file)?.[1]);
+    if (!year) continue;
+    const book = readWorkbook(file);
+    for (const sheet of book.SheetNames.filter(name => /^(0[1-9]|1[0-2])$/.test(name.trim()))) {
+        const month = Number(sheet);
+        const data = parseMonthSheet(sheetRows(book, sheet), year, month, ids, defs);
+        assert.ok(data, `${file} ${sheet}: day header not found`);
+        assert.equal(data.dates.length, new Date(Date.UTC(year, month, 0)).getUTCDate());
+        assert.ok(data.employees.length > 0);
+        const people = new Set(data.employees.map(employee => employee.empId));
+        assert.ok(data.records.every(record => people.has(record.empId) && data.dates.includes(record.date)));
+        assert.ok(!data.employees.some(employee => SUMMARY_NAMES.includes(employee.name)), `${file} ${sheet}: summary rows leaked in`);
+        assert.ok(!data.warnings.some(warning => SUMMARY_NAMES.some(name => warning.startsWith(`${name} 在工號表`))), `${file} ${sheet}: summary rows reported as staff`);
+        months++;
+    }
+}
+assert.ok(months > 0, 'no month sheets in data/');
 
-const october = parseMonthSheet(rows(book, '10'), 2026, 10, ids, defs);
-assert.equal(october.dates.length, 31);
-assert.equal(october.employees.length, 43);
-assert.deepEqual(october.records[0], { empId: '61668', date: '2026-10-01', code: '3' });
-assert.deepEqual(october.shifts['3'], { type: 'NT-3', label: 'NNOC-Mobile晚班', rest: false, start: '00:00', end: '08:00' });
-assert.ok(!october.employees.some(employee => ['早', 'OFF (X)', 'Total', 'Leader'].includes(employee.name)), 'summary rows leaked in');
+// A staff row with an empty Total is still read; the summary block (first row named "1") ends the table.
+const day = n => Array.from({ length: 31 }, (_, i) => (i < n ? 'X' : ''));
+const sheet = [
+    ['', '', 'Total', 'Name', ...Array.from({ length: 31 }, (_, i) => i + 1)],
+    ['', '', 8, 'A', '1', ...day(30)],
+    ['', '', '', 'B', '2', ...day(30)],
+    ['', '', '', '1', 5, ...day(30)]
+];
+const fake = parseMonthSheet(sheet, 2026, 10, new Map([['A', '1'], ['B', '2']]), defs);
+assert.deepEqual(fake.employees.map(employee => employee.name), ['A', 'B']);
+assert.equal(fake.shifts['1'].color, 'morning');
+assert.equal(fake.shifts['2'].group, '2');
+assert.equal(parseMonthSheet(sheet, 2026, 10, new Map([['A', '1']]), defs).warnings[0], 'B 在工號表找不到工號，未納入');
 
-// July has an extra "T" column, so names and days sit one column further right.
-const july = parseMonthSheet(rows(book, '07'), 2026, 7, ids, defs);
-assert.equal(july.dates.length, 31);
-assert.deepEqual(july.records.slice(0, 3).map(record => record.code), ['3', '3', '3']);
-assert.equal(july.records[0].empId, '61668');
+// Who is on duty: 16:00–24:00 ends at midnight, 00:00–08:00 belongs to its own date, 22:00–06:00 runs into the next day.
+await import('../schedule-core.js');
+const core = globalThis.ScheduleCore;
+const shifts = { '2': { start: '16:00', end: '24:00', rest: false }, '3': { start: '00:00', end: '08:00', rest: false }, L: { start: '22:00', end: '06:00', rest: false }, X: { rest: true } };
+const onDuty = (code, date, at) => core.currentRecords({ shifts, records: [{ empId: '1', date, code }] }, new Date(at)).length === 1;
+assert.ok(onDuty('2', '2026-10-31', '2026-10-31T23:59:00+08:00'));
+assert.ok(!onDuty('2', '2026-10-31', '2026-11-01T00:00:00+08:00'));
+assert.ok(onDuty('3', '2026-11-01', '2026-11-01T07:59:00+08:00'));
+assert.ok(!onDuty('3', '2026-11-01', '2026-11-01T08:00:00+08:00'));
+assert.ok(onDuty('L', '2026-10-31', '2026-11-01T05:59:00+08:00'));
+assert.ok(!onDuty('X', '2026-10-31', '2026-10-31T12:00:00+08:00'));
+assert.equal(core.taipeiDate(new Date('2026-10-31T16:30:00Z')), '2026-11-01');
 
-console.log('ok');
+console.log(`ok (${months} months)`);

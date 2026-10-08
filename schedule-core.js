@@ -42,22 +42,10 @@
         return data.records.filter(record => record.date === date);
     }
 
-    function rosterCode(code) {
-        return ({ M1: '1', 'T早': '早', 'T中': '中' })[code] || code;
+    function shiftClass(shift) {
+        return shift?.color ? `shift-${shift.color}` : '';
     }
 
-    function rosterLabel(code, shift) {
-        return ({ '1': 'Mobile 早班', '早': 'TX 早班', '中': 'TX 中班' })[rosterCode(code)] || shift.label.replaceAll('NNOC', 'NOC').replace(/^NOC-/, '');
-    }
-
-    function shiftClass(code) {
-        if (['1', 'M1', '早', 'T早', '日'].includes(code)) return 'shift-morning';
-        if (['2', 'M2', '中', 'T中', '小夜'].includes(code)) return 'shift-afternoon';
-        if (['3', '晚', '大夜'].includes(code)) return 'shift-night';
-        return '';
-    }
-
-    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, rosterCode, rosterLabel, shiftClass };
-    if (typeof module !== 'undefined' && module.exports) module.exports = api;
-    else root.ScheduleCore = api;
-})(typeof window === 'undefined' ? globalThis : window);
+    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, shiftClass };
+    root.ScheduleCore = api;
+})(globalThis);

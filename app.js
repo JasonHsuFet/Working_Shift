@@ -21,7 +21,7 @@
         if (location.protocol === 'file:') throw new Error('請從 GitHub Pages 或本機 HTTP 網站開啟；直接開啟 HTML 無法下載班表');
         if (!core) throw new Error('班表程式未完整載入，請確認所有 JavaScript 檔案已發布');
         const getJson = async file => {
-            const response = await fetch(`./data/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout(30000) });
+            const response = await fetch(`./data/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout?.(30000) });
             if (!response.ok) throw new Error(`${file} 下載失敗（HTTP ${response.status}）`);
             return response.json();
         };
@@ -47,14 +47,19 @@
         main.setAttribute('aria-busy', 'false');
         return;
     }
-    window.SCHEDULE_DATA = data;
     main.setAttribute('aria-busy', 'false');
     element('empId').disabled = false;
     element('employeeForm').querySelector('button').disabled = false;
     document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = false; });
     if (data.warnings.length) {
-        element('sourceWarnings').textContent = `來源資料提醒：${data.warnings.join('；')}`;
-        element('sourceWarnings').hidden = false;
+        const warnings = element('sourceWarnings');
+        warnings.textContent = `來源資料提醒：${data.warnings.join('；')}`;
+        warnings.hidden = false;
+        // Browsers without popover (Safari < 17) keep it as the inline notice.
+        if (warnings.showPopover) {
+            warnings.addEventListener('animationend', () => warnings.hidePopover());
+            warnings.showPopover();
+        }
     }
 
     const employees = new Map(data.employees.map(employee => [employee.empId, employee]));
@@ -104,7 +109,7 @@
         }
         const groups = new Map();
         for (const record of records) {
-            const code = core.rosterCode(record.code);
+            const code = data.shifts[record.code].group;
             if (!groups.has(code)) groups.set(code, []);
             groups.get(code).push(record);
         }
@@ -117,7 +122,8 @@
             const shift = data.shifts[code] || data.shifts[group[0].code];
             const section = textNode('section', '', 'roster-group');
             const heading = textNode('div', '', 'group-heading');
-            heading.append(textNode('h3', `${code} · ${core.rosterLabel(code, shift)}`, core.shiftClass(code)), textNode('span', `${timeLabel(shift)} · ${group.length} 人`, core.shiftClass(code)));
+            const colorClass = core.shiftClass(shift);
+            heading.append(textNode('h3', `${code} · ${shift.label}`, colorClass), textNode('span', `${timeLabel(shift)} · ${group.length} 人`, colorClass));
             section.append(heading);
             const people = textNode('div', '', 'roster-people');
             people.setAttribute('role', 'list');
@@ -147,8 +153,8 @@
         const shift = data.shifts[record.code];
         const detail = textNode('div', '', 'shift-detail');
         const description = textNode('div', '', 'shift-text');
-        const colorClass = core.shiftClass(record.code);
-        description.append(textNode('p', core.rosterLabel(record.code, shift), colorClass), textNode('small', timeLabel(shift), colorClass));
+        const colorClass = core.shiftClass(shift);
+        description.append(textNode('p', shift.label, colorClass), textNode('small', timeLabel(shift), colorClass));
         detail.append(textNode('span', record.code, `shift-code ${colorClass}`), description);
         container.append(detail);
     }
@@ -178,9 +184,9 @@
             const shift = record && data.shifts[record.code];
             const button = textNode('button', '', `day${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}`);
             button.type = 'button';
-            button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${core.rosterLabel(record.code, shift)}` : '無資料'}`);
+            button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${shift.label}` : '無資料'}`);
             button.setAttribute('aria-pressed', String(date === selectedDate));
-            button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', `day-code ${record ? core.shiftClass(record.code) : ''}`));
+            button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', `day-code ${core.shiftClass(shift)}`));
             button.addEventListener('click', () => { selectedDate = date; renderCalendar(); element('calendar').querySelector(`[aria-pressed="true"]`).focus({ preventScroll: true }); });
             calendar.append(button);
         }
@@ -233,19 +239,19 @@
             const all = textNode('option', '全部班別');
             all.value = '';
             filter.append(all);
-            for (const code of [...new Set(records.map(record => core.rosterCode(record.code)))]) {
-                const record = records.find(item => core.rosterCode(item.code) === code);
+            for (const code of [...new Set(records.map(record => data.shifts[record.code].group))]) {
+                const record = records.find(item => data.shifts[item.code].group === code);
                 const shift = data.shifts[code] || data.shifts[record.code];
-                const option = textNode('option', `${code} · ${core.rosterLabel(code, shift)}`, core.shiftClass(code));
+                const option = textNode('option', `${code} · ${shift.label}`, core.shiftClass(shift));
                 option.value = code;
                 filter.append(option);
             }
         }
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
-        filter.className = core.shiftClass(filter.value);
+        filter.className = filter.selectedOptions[0]?.className || '';
         summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
         notice('dailyNotice', data.dates.includes(date) ? '' : '此日期不在已發布資料期間。');
-        const visible = records.filter(record => (element('includeRest').checked || !data.shifts[record.code].rest) && (!filter.value || filter.value === core.rosterCode(record.code)));
+        const visible = records.filter(record => (element('includeRest').checked || !data.shifts[record.code].rest) && (!filter.value || filter.value === data.shifts[record.code].group));
         renderRoster('dailyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
     }
 
