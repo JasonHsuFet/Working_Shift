@@ -72,7 +72,7 @@
             const shift = data.shifts[code] || data.shifts[group[0].code];
             const section = textNode('section', '', 'roster-group');
             const heading = textNode('div', '', 'group-heading');
-            heading.append(textNode('h3', `${code} · ${core.rosterLabel(code, shift)}`), textNode('span', `${timeLabel(shift)} · ${group.length} 人`));
+            heading.append(textNode('h3', `${code} · ${core.rosterLabel(code, shift)}`, core.shiftClass(code)), textNode('span', `${timeLabel(shift)} · ${group.length} 人`, core.shiftClass(code)));
             section.append(heading);
             for (const record of group.sort((left, right) => employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
                 const person = employees.get(record.empId);
@@ -98,8 +98,9 @@
         const shift = data.shifts[record.code];
         const detail = textNode('div', '', 'shift-detail');
         const description = textNode('div', '', 'shift-text');
-        description.append(textNode('p', core.rosterLabel(record.code, shift)), textNode('small', timeLabel(shift)));
-        detail.append(textNode('span', record.code, 'shift-code'), description);
+        const colorClass = core.shiftClass(record.code);
+        description.append(textNode('p', core.rosterLabel(record.code, shift), colorClass), textNode('small', timeLabel(shift), colorClass));
+        detail.append(textNode('span', record.code, `shift-code ${colorClass}`), description);
         container.append(detail);
     }
 
@@ -130,7 +131,7 @@
             button.type = 'button';
             button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${core.rosterLabel(record.code, shift)}` : '無資料'}`);
             button.setAttribute('aria-pressed', String(date === selectedDate));
-            button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', 'day-code'));
+            button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', `day-code ${record ? core.shiftClass(record.code) : ''}`));
             button.addEventListener('click', () => { selectedDate = date; renderCalendar(); element('calendar').querySelector(`[aria-pressed="true"]`).focus({ preventScroll: true }); });
             calendar.append(button);
         }
@@ -186,12 +187,13 @@
             for (const code of [...new Set(records.map(record => core.rosterCode(record.code)))]) {
                 const record = records.find(item => core.rosterCode(item.code) === code);
                 const shift = data.shifts[code] || data.shifts[record.code];
-                const option = textNode('option', `${code} · ${core.rosterLabel(code, shift)}`);
+                const option = textNode('option', `${code} · ${core.rosterLabel(code, shift)}`, core.shiftClass(code));
                 option.value = code;
                 filter.append(option);
             }
         }
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
+        filter.className = core.shiftClass(filter.value);
         summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
         notice('dailyNotice', data.dates.includes(date) ? '' : '此日期不在已發布資料期間。');
         const visible = records.filter(record => (element('includeRest').checked || !data.shifts[record.code].rest) && (!filter.value || filter.value === core.rosterCode(record.code)));
