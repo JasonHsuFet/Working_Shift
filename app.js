@@ -9,6 +9,7 @@
         document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#212624' : '#ffffff';
         try { localStorage.setItem('noc-static-theme', theme); } catch (_) { }
     });
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => { });
     const core = window.ScheduleCore;
     const main = document.querySelector('main');
     main.setAttribute('aria-busy', 'true');
@@ -312,5 +313,13 @@
     }
 
     setInterval(() => { if (activeTab === 'current') renderCurrent(); }, 30000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden && activeTab === 'current') renderCurrent(); });
+    document.addEventListener('visibilitychange', async () => {
+        if (document.hidden) return;
+        if (activeTab === 'current') renderCurrent();
+        // An installed app resumes without reloading, so pick up a newly published schedule here.
+        try {
+            const response = await fetch('./data/index.json', { cache: 'no-cache' });
+            if (response.ok && (await response.json()).generatedAt !== data.sourceUpdatedAt) location.reload();
+        } catch (_) { }
+    });
 })();

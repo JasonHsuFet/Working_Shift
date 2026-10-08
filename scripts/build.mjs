@@ -8,7 +8,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const DATA = path.join(ROOT, 'data');
 const DIST = path.join(ROOT, 'dist');
 export const DB_FILE = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
-const SITE_FILES = ['index.html', 'app.js', 'schedule-core.js', 'style.css'];
+const SITE_FILES = ['index.html', 'app.js', 'schedule-core.js', 'style.css', 'manifest.webmanifest', 'sw.js'];
 
 const SHIFT_TYPES = {
     '1': 'NT-1', M1: 'NT-M1', '2': 'NT-2', M2: 'NT-M2', '3': 'NT-3',
