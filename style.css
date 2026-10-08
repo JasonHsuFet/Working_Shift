@@ -72,7 +72,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .theme-switch input:checked::before { transform: translateX(16px); }
 .brand { display: flex; align-items: center; gap: 16px; font-size: 13px; font-weight: 700; }
 .brand img { object-fit: contain; }
-:root[data-theme="dark"] .brand img { background: #fff; padding: 4px; border-radius: 4px; }
 .brand span { border-left: 1px solid var(--line); padding-left: 16px; }
 .heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
 h1, h2, h3, p { margin: 0; }
@@ -129,8 +128,9 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--teal); }
 .roster-group { margin-top: 22px; }
 .group-heading { background: var(--wash); border-left: 3px solid var(--teal); padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
 .group-heading h3 { font-size: 14px; overflow-wrap: anywhere; }.group-heading span { color: var(--teal); font-size: 12px; }
-.roster-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
-.roster-item strong { font-size: 14px; overflow-wrap: anywhere; min-width: 0; }.roster-item small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 2px; }.roster-item .date-tag { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.roster-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 100px), 1fr)); gap: 8px; padding-top: 10px; }
+.roster-item { display: flex; align-items: center; min-width: 0; min-height: 64px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--cell); }
+.roster-item strong { display: block; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; min-width: 0; }.roster-item small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .empty { padding: 28px 12px; text-align: center; color: var(--muted); background: var(--empty-bg); border-bottom: 1px solid var(--line); font-size: 14px; }
 .unknown-times { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; }.unknown-times summary { cursor: pointer; min-height: 44px; }
 footer { padding: 18px 22px max(24px, env(safe-area-inset-bottom)); color: var(--muted); font-size: 11px; }

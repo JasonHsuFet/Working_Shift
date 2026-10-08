@@ -102,14 +102,18 @@
             const heading = textNode('div', '', 'group-heading');
             heading.append(textNode('h3', `${code} · ${core.rosterLabel(code, shift)}`, core.shiftClass(code)), textNode('span', `${timeLabel(shift)} · ${group.length} 人`, core.shiftClass(code)));
             section.append(heading);
+            const people = textNode('div', '', 'roster-people');
+            people.setAttribute('role', 'list');
             for (const record of group.sort((left, right) => employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
                 const person = employees.get(record.empId);
                 const row = textNode('div', '', 'roster-item');
+                row.setAttribute('role', 'listitem');
                 const name = textNode('strong', person.name);
                 name.append(textNode('small', person.empId));
-                row.append(name, textNode('span', record.date.slice(5).replace('-', '/'), 'date-tag'));
-                section.append(row);
+                row.append(name);
+                people.append(row);
             }
+            section.append(people);
             container.append(section);
         }
     }
