@@ -45,3 +45,32 @@
             </form>
             <div id="personalSchedule" hidden>
                 <div class="person-heading"><h2 id="employeeName"></h2><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
+                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><h3 id="monthLabel"></h3><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button></div>
+                <div id="monthSummary" class="summary"></div>
+                <div class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+                <div id="calendar" class="calendar" aria-label="個人月曆"></div>
+                <div class="legend"><span><i class="work-dot"></i>出勤</span><span><i class="rest-dot"></i>休假</span><span><i class="today-dot"></i>今日</span></div>
+                <section class="day-detail" aria-label="日期班別明細"><h3 id="selectedDate"></h3><div id="selectedShift"></div></section>
+            </div>
+        </section>
+        <section id="current" aria-label="當前班表" hidden>
+            <div class="section-heading"><h2>目前值班</h2><span class="live-dot" aria-hidden="true"></span></div>
+            <p id="currentTime" class="metadata"></p>
+            <p id="currentNotice" class="notice" hidden></p>
+            <div id="currentSummary" class="summary"></div>
+            <div id="currentRoster" class="roster"></div>
+            <details id="unknownTimes" class="unknown-times" hidden><summary>時間未定義的排班</summary><div id="unknownRoster"></div></details>
+        </section>
+        <section id="daily" aria-label="當日班表" hidden>
+            <div class="section-heading"><h2>當日班表</h2><button id="goToday" type="button" class="plain">今天</button></div>
+            <div class="date-row"><label for="rosterDate">日期</label><input id="rosterDate" type="date"></div>
+            <p id="dailyNotice" class="notice" hidden></p>
+            <div id="dailySummary" class="summary"></div>
+            <div class="roster-controls"><label for="shiftFilter">班別</label><select id="shiftFilter"><option value="">全部班別</option></select><label class="checkbox-label"><input id="includeRest" type="checkbox">含休假</label></div>
+            <div id="dailyRoster" class="roster"></div>
+        </section>
+    </main>
+    <footer><p id="updatedAt"></p><p>Asia/Taipei · 以發布班表為準</p></footer>
+    <noscript><p class="notice error">請啟用 JavaScript 以查看班表。</p></noscript>
+</body>
+</html>
