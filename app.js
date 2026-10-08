@@ -1,6 +1,14 @@
 (function () {
     'use strict';
     const element = id => document.getElementById(id);
+    const themeSwitch = element('darkTheme');
+    themeSwitch.checked = document.documentElement.dataset.theme === 'dark';
+    themeSwitch.addEventListener('change', () => {
+        const theme = themeSwitch.checked ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#212624' : '#ffffff';
+        try { localStorage.setItem('noc-static-theme', theme); } catch (_) { }
+    });
     const data = window.SCHEDULE_DATA;
     const core = window.ScheduleCore;
     if (!data || !core || data.schemaVersion !== 1) {
