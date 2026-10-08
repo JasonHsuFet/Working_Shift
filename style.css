@@ -118,6 +118,11 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .section-heading { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
 .live-dot { width: 8px; height: 8px; background: var(--teal); border-radius: 50%; }
 .notice { border-left: 3px solid #d6ad36; background: var(--yellow); padding: 12px; font-size: 13px; margin: 16px 0; overflow-wrap: anywhere; }
+/* Fades out after 8s; hovering or focusing it restarts the wait. */
+#sourceWarnings:popover-open { position: fixed; inset: auto 16px 16px; max-width: 560px; margin: 0 auto; border: 0; border-left: 3px solid #d6ad36; color: var(--ink); box-shadow: 0 4px 16px rgb(0 0 0 / .18); animation: fade-out .6s 8s forwards; }
+#sourceWarnings:popover-open:is(:hover, :focus) { animation: none; }
+@keyframes fade-out { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #sourceWarnings:popover-open { animation-duration: .01s; } }
 .error { border-color: var(--red); background: var(--error-bg); color: var(--error-ink); }
 .date-row { display: flex; gap: 12px; align-items: center; margin: 12px 0 20px; font-size: 13px; }
 .date-row input { flex: 1; width: 100%; }

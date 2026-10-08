@@ -5,9 +5,13 @@
   "packageManager": "pnpm@10.18.3",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node scripts/build.test.mjs"
+    "test": "node scripts/build.test.mjs",
+    "preview": "vite preview"
   },
   "dependencies": {
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "vite": "^8.3.3"
   }
 }

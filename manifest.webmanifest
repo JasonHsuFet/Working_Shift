@@ -1,0 +1,10 @@
+{
+    "name": "NOC 值班班表",
+    "short_name": "NOC 班表",
+    "lang": "zh-Hant",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff"
+}
