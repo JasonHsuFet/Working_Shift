@@ -9,22 +9,39 @@
         document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#212624' : '#ffffff';
         try { localStorage.setItem('noc-static-theme', theme); } catch (_) { }
     });
-    const sourceFile = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
     const core = window.ScheduleCore;
     const main = document.querySelector('main');
     main.setAttribute('aria-busy', 'true');
-    element('coverage').textContent = '正在讀取 Excel 班表…';
+    element('coverage').textContent = '正在讀取班表…';
     element('empId').disabled = true;
     element('employeeForm').querySelector('button').disabled = true;
     document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = true; });
     let data;
     try {
-        if (location.protocol === 'file:') throw new Error('請從 GitHub Pages 或本機 HTTP 網站開啟；直接開啟 HTML 無法下載 Excel');
-        if (!core || !window.ScheduleWorkbook) throw new Error('班表程式未完整載入，請確認所有 JavaScript 檔案已發布');
-        data = await window.ScheduleWorkbook.loadWorkbook(new URL(`./${sourceFile}`, location.href).href);
+        if (location.protocol === 'file:') throw new Error('請從 GitHub Pages 或本機 HTTP 網站開啟；直接開啟 HTML 無法下載班表');
+        if (!core) throw new Error('班表程式未完整載入，請確認所有 JavaScript 檔案已發布');
+        const getJson = async file => {
+            const response = await fetch(`./data/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout(30000) });
+            if (!response.ok) throw new Error(`${file} 下載失敗（HTTP ${response.status}）`);
+            return response.json();
+        };
+        const index = await getJson('index.json');
+        // ponytail: loads all months up front (~50KB each); fetch per month if history grows large
+        const parts = await Promise.all(index.months.map(month => getJson(`${month}.json`)));
+        const people = new Map(parts.flatMap(part => part.employees.map(person => [person.empId, person])));
+        const dates = parts.flatMap(part => part.dates).sort();
+        data = {
+            range: { start: dates[0], end: dates.at(-1) },
+            dates,
+            shifts: Object.assign({}, ...parts.map(part => part.shifts)),
+            employees: [...people.values()],
+            records: parts.flatMap(part => part.records),
+            warnings: [...new Set(parts.flatMap(part => part.warnings))],
+            sourceUpdatedAt: index.generatedAt
+        };
     } catch (error) {
         element('fatal').hidden = false;
-        element('fatal').textContent = `班表載入失敗：${error.message}。請確認同目錄有 ${sourceFile}，檔名大小寫完全相同，再重新整理。`;
+        element('fatal').textContent = `班表載入失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}。請重新整理再試一次。`;
         element('coverage').textContent = '資料無法載入';
         element('employeeForm').hidden = true;
         main.setAttribute('aria-busy', 'false');
