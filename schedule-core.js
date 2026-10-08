@@ -42,7 +42,15 @@
         return data.records.filter(record => record.date === date);
     }
 
-    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords };
+    function rosterCode(code) {
+        return ({ M1: '1', 'T早': '早', 'T中': '中' })[code] || code;
+    }
+
+    function rosterLabel(code, shift) {
+        return ({ '1': 'Mobile 早班', '早': 'TX 早班', '中': 'TX 中班' })[rosterCode(code)] || shift.label.replaceAll('NNOC', 'NOC').replace(/^NOC-/, '');
+    }
+
+    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, rosterCode, rosterLabel };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.ScheduleCore = api;
 })(typeof window === 'undefined' ? globalThis : window);
