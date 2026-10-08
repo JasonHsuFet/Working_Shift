@@ -1,0 +1,13 @@
+{
+  "name": "not-shift",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.18.3",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.test.mjs"
+  },
+  "dependencies": {
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}
