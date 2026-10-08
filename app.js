@@ -284,16 +284,27 @@
     element('includeRest').addEventListener('change', () => renderDaily());
     element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(true); });
     renderDaily(true);
+
     const urlEmpId = new URLSearchParams(location.search).get('empno');
     if (urlEmpId !== null) {
-        element('empId').value = core.normalizeEmpId(urlEmpId);
-        selectEmployee(urlEmpId);
+        const normalized = core.normalizeEmpId(urlEmpId);
+        element('empId').value = normalized;
+        selectEmployee(normalized);
     } else {
         try {
             const remembered = localStorage.getItem('nnoc-static-empId');
-            if (remembered && employees.has(remembered)) selectEmployee(remembered);
-        } catch (_) { }
+            if (remembered && employees.has(remembered)) {
+                selectEmployee(remembered);
+            } else {
+                element('empId').focus();
+                notice('employeeError', '請輸入工號以檢視個人班表。');
+            }
+        } catch (_) {
+            element('empId').focus();
+            notice('employeeError', '請輸入工號以檢視個人班表。');
+        }
     }
+
     setInterval(() => { if (activeTab === 'current') renderCurrent(); }, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden && activeTab === 'current') renderCurrent(); });
 })();
