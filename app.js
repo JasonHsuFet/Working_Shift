@@ -1,4 +1,4 @@
-(function () {
+(async function () {
     'use strict';
     const element = id => document.getElementById(id);
     const themeSwitch = element('darkTheme');
@@ -9,15 +9,35 @@
         document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#212624' : '#ffffff';
         try { localStorage.setItem('noc-static-theme', theme); } catch (_) { }
     });
-    const data = window.SCHEDULE_DATA;
+    const sourceFile = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
     const core = window.ScheduleCore;
-    if (!data || !core || data.schemaVersion !== 1) {
+    const main = document.querySelector('main');
+    main.setAttribute('aria-busy', 'true');
+    element('coverage').textContent = '正在讀取 Excel 班表…';
+    element('empId').disabled = true;
+    element('employeeForm').querySelector('button').disabled = true;
+    document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = true; });
+    let data;
+    try {
+        if (location.protocol === 'file:') throw new Error('請從 GitHub Pages 或本機 HTTP 網站開啟；直接開啟 HTML 無法下載 Excel');
+        if (!core || !window.ScheduleWorkbook) throw new Error('班表程式未完整載入，請確認所有 JavaScript 檔案已發布');
+        data = await window.ScheduleWorkbook.loadWorkbook(new URL(`./${sourceFile}`, location.href).href);
+    } catch (error) {
         element('fatal').hidden = false;
-        element('fatal').textContent = '班表資料載入失敗，請確認 data.js 與網頁一併發布，然後重新整理。';
+        element('fatal').textContent = `班表載入失敗：${error.message}。請確認同目錄有 ${sourceFile}，檔名大小寫完全相同，再重新整理。`;
         element('coverage').textContent = '資料無法載入';
         element('employeeForm').hidden = true;
-        document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = true; });
+        main.setAttribute('aria-busy', 'false');
         return;
+    }
+    window.SCHEDULE_DATA = data;
+    main.setAttribute('aria-busy', 'false');
+    element('empId').disabled = false;
+    element('employeeForm').querySelector('button').disabled = false;
+    document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = false; });
+    if (data.warnings.length) {
+        element('sourceWarnings').textContent = `來源資料提醒：${data.warnings.join('；')}`;
+        element('sourceWarnings').hidden = false;
     }
 
     const employees = new Map(data.employees.map(employee => [employee.empId, employee]));
@@ -209,7 +229,9 @@
     }
 
     element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${data.employees.length} 人`;
-    element('updatedAt').textContent = `資料產生：${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.generatedAt))}`;
+    element('updatedAt').textContent = data.sourceUpdatedAt
+        ? `網站檔案更新：${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.sourceUpdatedAt))}`
+        : '網站未提供檔案更新時間';
     element('rosterDate').value = core.taipeiDate();
     element('employeeForm').addEventListener('submit', event => { event.preventDefault(); selectEmployee(element('empId').value); });
     element('clearEmployee').addEventListener('click', () => {
@@ -241,10 +263,16 @@
     element('includeRest').addEventListener('change', () => renderDaily());
     element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(true); });
     renderDaily(true);
-    try {
-        const remembered = localStorage.getItem('nnoc-static-empId');
-        if (remembered && employees.has(remembered)) selectEmployee(remembered);
-    } catch (_) { }
+    const urlEmpId = new URLSearchParams(location.search).get('empno');
+    if (urlEmpId !== null) {
+        element('empId').value = core.normalizeEmpId(urlEmpId);
+        selectEmployee(urlEmpId);
+    } else {
+        try {
+            const remembered = localStorage.getItem('nnoc-static-empId');
+            if (remembered && employees.has(remembered)) selectEmployee(remembered);
+        } catch (_) { }
+    }
     setInterval(() => { if (activeTab === 'current') renderCurrent(); }, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden && activeTab === 'current') renderCurrent(); });
 })();
