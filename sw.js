@@ -1,6 +1,6 @@
 // Network-first: always serve fresh pages and schedules, falling back to the last cached copy when offline.
 const CACHE = 'noc-schedule';
-const SHELL = ['./', 'index.html', 'app.js', 'schedule-core.js', 'style.css', 'manifest.webmanifest'];
+const SHELL = ['./', 'index.html', 'app.js', 'schedule-core.js', 'style.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png'];
 
 self.addEventListener('install', event => {
     event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
