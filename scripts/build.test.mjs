@@ -52,4 +52,26 @@ assert.ok(onDuty('L', '2026-10-31', '2026-11-01T05:59:00+08:00'));
 assert.ok(!onDuty('X', '2026-10-31', '2026-10-31T12:00:00+08:00'));
 assert.equal(core.taipeiDate(new Date('2026-10-31T16:30:00Z')), '2026-11-01');
 
+// Weeks start on Monday.
+assert.equal(core.weekStart('2026-10-12'), '2026-10-12');
+assert.equal(core.weekStart('2026-10-18'), '2026-10-12');
+assert.equal(core.weekStart('2026-11-01'), '2026-10-26');
+
+// ICS export: only this person's work shifts; midnight end stays in Asia/Taipei; untimed shifts are all-day; long lines are folded.
+const longLabel = '班'.repeat(40);
+const icsData = {
+    shifts: { '2': { label: 'TX 中班', start: '16:00', end: '24:00', rest: false }, Q: { label: longLabel, rest: false }, X: { label: '例假日', rest: true } },
+    records: [
+        { empId: '1', date: '2026-10-31', code: '2' }, { empId: '1', date: '2026-11-01', code: 'X' },
+        { empId: '1', date: '2026-11-02', code: 'Q' }, { empId: '2', date: '2026-10-31', code: '2' }
+    ]
+};
+const ics = core.icsCalendar(icsData, { empId: '1', name: 'A' }, new Date('2026-10-01T00:00:00Z'));
+assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n'));
+assert.equal(ics.split('BEGIN:VEVENT').length - 1, 2);
+assert.ok(ics.includes('DTSTART:20261031T080000Z\r\nDTEND:20261031T160000Z'));
+assert.ok(ics.includes('DTSTART;VALUE=DATE:20261102\r\nDTEND;VALUE=DATE:20261103'));
+assert.ok(ics.split('\r\n').every(line => new TextEncoder().encode(line).length <= 75));
+assert.ok(ics.replaceAll('\r\n ', '').includes(`SUMMARY:Q ${longLabel}`));
+
 console.log(`ok (${months} months)`);
