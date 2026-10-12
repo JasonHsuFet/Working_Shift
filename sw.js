@@ -17,5 +17,12 @@ self.addEventListener('fetch', event => {
             event.waitUntil(caches.open(CACHE).then(cache => cache.put(request, copy)));
         }
         return response;
-    }).catch(async () => (await caches.match(request, { ignoreSearch: true })) || Response.error()));
+    }).catch(async () => {
+        const cached = await caches.match(request, { ignoreSearch: true });
+        if (!cached) return Response.error();
+        // The page reads this header to tell stored data from freshly downloaded data.
+        const headers = new Headers(cached.headers);
+        headers.set('x-offline-cache', '1');
+        return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
+    }));
 });

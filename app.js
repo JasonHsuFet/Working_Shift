@@ -17,6 +17,7 @@
     element('empId').disabled = true;
     element('employeeForm').querySelector('button').disabled = true;
     document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = true; });
+    let fromCache = false;
     let data;
     try {
         if (location.protocol === 'file:') throw new Error('請從 GitHub Pages 或本機 HTTP 網站開啟；直接開啟 HTML 無法下載班表');
@@ -24,6 +25,7 @@
         const getJson = async file => {
             const response = await fetch(`./data/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout?.(30000) });
             if (!response.ok) throw new Error(`${file} 下載失敗（HTTP ${response.status}）`);
+            if (response.headers.has('x-offline-cache')) fromCache = true;
             return response.json();
         };
         const index = await getJson('index.json');
@@ -69,6 +71,8 @@
     let month = months.includes(core.taipeiDate().slice(0, 7)) ? core.taipeiDate().slice(0, 7) : months.at(-1);
     let selectedDate = '';
     let activeTab = 'personal';
+    let view = 'month';
+    try { if (localStorage.getItem('nnoc-static-view') === 'week') view = 'week'; } catch (_) { }
 
     function textNode(tag, text, className) {
         const node = document.createElement(tag);
@@ -165,7 +169,7 @@
         const records = data.records.filter(record => record.empId === employee.empId && record.date.startsWith(month));
         const byDate = new Map(records.map(record => [record.date, record]));
         const today = core.taipeiDate();
-        if (!selectedDate.startsWith(month)) selectedDate = today.startsWith(month) ? today : `${month}-01`;
+        syncSelectedDate();
         element('employeeName').textContent = employee.name;
         element('monthLabel').textContent = `${month.slice(0, 4)} 年 ${Number(month.slice(5))} 月`;
         const position = months.indexOf(month);
@@ -188,10 +192,100 @@
             button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${shift.label}` : '無資料'}`);
             button.setAttribute('aria-pressed', String(date === selectedDate));
             button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', `day-code ${core.shiftClass(shift)}`));
-            button.addEventListener('click', () => { selectedDate = date; renderCalendar(); element('calendar').querySelector(`[aria-pressed="true"]`).focus({ preventScroll: true }); });
+            button.addEventListener('click', () => { selectedDate = date; renderPersonal(); element('calendar').querySelector(`[aria-pressed="true"]`).focus({ preventScroll: true }); });
             calendar.append(button);
         }
         renderSelectedDay();
+    }
+
+    function syncSelectedDate() {
+        const today = core.taipeiDate();
+        if (!selectedDate.startsWith(month)) selectedDate = today.startsWith(month) ? today : `${month}-01`;
+    }
+
+    const monthDay = date => `${Number(date.slice(5, 7))}/${Number(date.slice(8))}`;
+    const weekdayLabel = date => new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', weekday: 'short' }).format(new Date(`${date}T00:00:00+08:00`));
+
+    function renderWeek() {
+        syncSelectedDate();
+        const start = core.weekStart(selectedDate);
+        const days = Array.from({ length: 7 }, (_, index) => core.addDays(start, index));
+        const byDate = new Map(data.records.filter(record => record.empId === employee.empId && record.date >= days[0] && record.date <= days[6]).map(record => [record.date, record]));
+        const today = core.taipeiDate();
+        const years = [days[0].slice(0, 4), days[6].slice(0, 4)];
+        element('employeeName').textContent = employee.name;
+        element('monthLabel').textContent = `${years[0]} 年 ${monthDay(days[0])} – ${years[1] !== years[0] ? `${years[1]} 年 ` : ''}${monthDay(days[6])}`;
+        element('previousMonth').disabled = days[0] <= data.range.start;
+        element('nextMonth').disabled = days[6] >= data.range.end;
+        const restCount = [...byDate.values()].filter(record => data.shifts[record.code].rest).length;
+        summary('monthSummary', [['出勤', byDate.size - restCount], ['休假', restCount]]);
+        const list = element('weekList');
+        list.replaceChildren();
+        for (const date of days) {
+            const record = byDate.get(date);
+            const shift = record && data.shifts[record.code];
+            const colorClass = core.shiftClass(shift);
+            const row = textNode('div', '', `week-row${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}`);
+            row.setAttribute('role', 'listitem');
+            const day = textNode('div', '', 'week-day');
+            day.append(textNode('strong', monthDay(date)), textNode('small', weekdayLabel(date)));
+            const description = textNode('div', '', 'shift-text');
+            description.append(textNode('p', shift ? shift.label : '無排班資料', colorClass), textNode('small', shift ? timeLabel(shift) : '—', colorClass));
+            row.append(day, textNode('span', record ? record.code : '—', `shift-code ${colorClass}`), description);
+            list.append(row);
+        }
+    }
+
+    function renderPersonal() {
+        if (!employee) return;
+        const isWeek = view === 'week';
+        for (const id of ['calendar', 'weekdays', 'dayDetail']) element(id).hidden = isWeek;
+        element('weekList').hidden = !isWeek;
+        document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+        element('previousMonth').title = isWeek ? '上一週' : '上個月';
+        element('nextMonth').title = isWeek ? '下一週' : '下個月';
+        element('previousMonth').setAttribute('aria-label', element('previousMonth').title);
+        element('nextMonth').setAttribute('aria-label', element('nextMonth').title);
+        element('goCurrent').textContent = isWeek ? '本週' : '本月';
+        element('goCurrent').disabled = !data.dates.includes(core.taipeiDate());
+        if (isWeek) renderWeek();
+        else renderCalendar();
+    }
+
+    function shiftWeek(delta) {
+        const moved = core.addDays(selectedDate, delta * 7);
+        selectedDate = moved < data.range.start ? data.range.start : moved > data.range.end ? data.range.end : moved;
+        month = selectedDate.slice(0, 7);
+        renderPersonal();
+    }
+
+    function exportIcs() {
+        if (!employee) return;
+        const url = URL.createObjectURL(new Blob([core.icsCalendar(data, employee)], { type: 'text/calendar;charset=utf-8' }));
+        const link = Object.assign(document.createElement('a'), { href: url, download: `noc-shift-${employee.empId}.ics` });
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function updateStatus() {
+        const offline = !navigator.onLine || fromCache;
+        const outOfRange = !data.dates.includes(core.taipeiDate());
+        const status = element('dataStatus');
+        status.hidden = false;
+        status.className = `status${offline || outOfRange ? ' warn' : ''}`;
+        status.textContent = offline ? '無法連線，目前顯示已儲存的班表' : outOfRange ? '今日不在班表涵蓋期間' : '已連線，班表已同步';
+    }
+
+    // Reloads when a newer schedule was published; otherwise just refreshes the connection status.
+    async function checkPublished() {
+        try {
+            const response = await fetch('./data/index.json', { cache: 'no-cache' });
+            fromCache = response.headers.has('x-offline-cache');
+            if (response.ok && !fromCache && (await response.json()).generatedAt !== data.sourceUpdatedAt) { location.reload(); return; }
+        } catch (_) { fromCache = true; }
+        updateStatus();
     }
 
     function selectEmployee(empId) {
@@ -211,7 +305,7 @@
         notice('employeeError', '');
         element('personalSchedule').hidden = false;
         try { localStorage.setItem('nnoc-static-empId', normalized); } catch (_) { }
-        renderCalendar();
+        renderPersonal();
     }
 
     function renderCurrent() {
@@ -233,6 +327,9 @@
 
     function renderDaily(resetFilter = false) {
         const date = element('rosterDate').value;
+        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+        element('prevDay').disabled = !validDate || date <= data.range.start;
+        element('nextDay').disabled = !validDate || date >= data.range.end;
         const records = core.dayRecords(data, date);
         const filter = element('shiftFilter');
         if (resetFilter) {
@@ -258,8 +355,9 @@
 
     element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${data.employees.length} 人`;
     element('updatedAt').textContent = data.sourceUpdatedAt
-        ? `網站檔案更新：${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.sourceUpdatedAt))}`
-        : '網站未提供檔案更新時間';
+        ? `班表資料產生時間：${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.sourceUpdatedAt))}`
+        : '網站未提供資料產生時間';
+    updateStatus();
     element('rosterDate').value = core.taipeiDate();
     element('employeeForm').addEventListener('submit', event => { event.preventDefault(); selectEmployee(element('empId').value); });
     element('clearEmployee').addEventListener('click', () => {
@@ -272,8 +370,24 @@
         element('empId').focus();
     });
     for (const [id, delta] of [['previousMonth', -1], ['nextMonth', 1]]) {
-        element(id).addEventListener('click', () => { month = months[months.indexOf(month) + delta]; renderCalendar(); });
+        element(id).addEventListener('click', () => {
+            if (view === 'week') shiftWeek(delta);
+            else { month = months[months.indexOf(month) + delta]; renderPersonal(); }
+        });
     }
+    document.querySelectorAll('[data-view]').forEach(button => {
+        button.addEventListener('click', () => {
+            view = button.dataset.view;
+            try { localStorage.setItem('nnoc-static-view', view); } catch (_) { }
+            renderPersonal();
+        });
+    });
+    element('goCurrent').addEventListener('click', () => {
+        selectedDate = core.taipeiDate();
+        month = selectedDate.slice(0, 7);
+        renderPersonal();
+    });
+    element('exportIcs').addEventListener('click', exportIcs);
     document.querySelectorAll('[data-tab]').forEach(button => {
         button.addEventListener('click', () => {
             activeTab = button.dataset.tab;
@@ -290,6 +404,13 @@
     element('shiftFilter').addEventListener('change', () => renderDaily());
     element('includeRest').addEventListener('change', () => renderDaily());
     element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(true); });
+    for (const [id, delta] of [['prevDay', -1], ['nextDay', 1]]) {
+        element(id).addEventListener('click', () => {
+            if (!element('rosterDate').value) return;
+            element('rosterDate').value = core.addDays(element('rosterDate').value, delta);
+            renderDaily(true);
+        });
+    }
     renderDaily(true);
 
     const urlEmpId = new URLSearchParams(location.search).get('empno');
@@ -313,13 +434,12 @@
     }
 
     setInterval(() => { if (activeTab === 'current') renderCurrent(); }, 30000);
-    document.addEventListener('visibilitychange', async () => {
+    window.addEventListener('online', checkPublished);
+    window.addEventListener('offline', updateStatus);
+    document.addEventListener('visibilitychange', () => {
         if (document.hidden) return;
         if (activeTab === 'current') renderCurrent();
         // An installed app resumes without reloading, so pick up a newly published schedule here.
-        try {
-            const response = await fetch('./data/index.json', { cache: 'no-cache' });
-            if (response.ok && (await response.json()).generatedAt !== data.sourceUpdatedAt) location.reload();
-        } catch (_) { }
+        checkPublished();
     });
 })();
