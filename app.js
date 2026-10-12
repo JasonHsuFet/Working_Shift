@@ -66,6 +66,12 @@
     }
 
     const employees = new Map(data.employees.map(employee => [employee.empId, employee]));
+    element('empList').replaceChildren(...[...employees.values()].sort((left, right) => left.empId.localeCompare(right.empId, undefined, { numeric: true })).map(person => {
+        const option = document.createElement('option');
+        option.value = person.empId;
+        option.label = person.name;
+        return option;
+    }));
     const months = [...new Set(data.dates.map(date => date.slice(0, 7)))].sort();
     let employee = null;
     let month = months.includes(core.taipeiDate().slice(0, 7)) ? core.taipeiDate().slice(0, 7) : months.at(-1);
