@@ -53,6 +53,7 @@
                     <section id="dayDetail" class="day-detail" aria-label="日期班別明細"><h3 id="selectedDate"></h3><div id="selectedShift"></div></section>
                     <button id="clearEmployee" type="button" class="plain">清除工號</button>
                 </div>
+                <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
                 <div class="view-bar">
                     <div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div>
                     <button id="goCurrent" type="button" class="plain">本月</button>
@@ -64,7 +65,6 @@
                 <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
                 <div class="legend"><span><i class="work-dot"></i>出勤</span><span><i class="rest-dot"></i>休假</span><span><i class="today-dot"></i>今日</span></div>
                 <div class="person-stats"><div id="statCounts" class="stat-counts"></div><p id="statStreak" class="stat-line"></p></div>
-                <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
             </div>
         </section>
         <section id="current" aria-label="當前班表" hidden>

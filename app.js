@@ -355,7 +355,7 @@
         if (element('colleagues').hidden) return;
         const others = data.records.filter(item => item.date === selectedDate && data.shifts[item.code].group === shift.group && item.empId !== employee.empId)
             .map(item => employees.get(item.empId)).sort((left, right) => left.name.localeCompare(right.name));
-        element('colleaguesTitle').textContent = others.length ? `同班同事（${record.code} · ${shift.label}）${others.length} 人` : '當天沒有其他同班同事';
+        element('colleaguesTitle').textContent = others.length ? `同班同事 ${others.length} 人` : '當天沒有其他同班同事';
         element('colleaguesList').replaceChildren(...others.map(person => {
             const chip = textNode('span', person.name);
             chip.title = person.empId;
