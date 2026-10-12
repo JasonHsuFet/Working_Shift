@@ -347,19 +347,38 @@
         element('prevDay').disabled = !validDate || date <= data.range.start;
         element('nextDay').disabled = !validDate || date >= data.range.end;
         const records = core.dayRecords(data, date);
-        const filter = element('shiftFilter');
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
-        filter.className = filter.selectedOptions[0]?.className || '';
         summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
         notice('dailyNotice', data.dates.includes(date) ? '' : '此日期不在已發布資料期間。');
-        const visible = records.filter(record => !filter.value || core.shiftCategory(data.shifts[record.code]) === filter.value);
+        const visible = records.filter(record => !rosterFilter || core.shiftCategory(data.shifts[record.code]) === rosterFilter);
         renderRoster('dailyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
     }
 
-    for (const [id, label] of core.shiftCategories) {
-        const option = textNode('option', label, core.shiftClass({ color: id }));
-        option.value = id;
-        element('shiftFilter').append(option);
+    let rosterFilter = '';
+    const filterIcons = {
+        all: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+        morning: '<path d="M12 2v8M4.93 10.93l1.41 1.41M2 18h2M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M8 6l4-4 4 4M16 18a4 4 0 0 0-8 0"/>',
+        afternoon: '<path d="M12 10V2M4.93 10.93l1.41 1.41M2 18h2M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M16 6l-4 4-4-4M16 18a4 4 0 0 0-8 0"/>',
+        night: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        n: '<rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+        rest: '<path d="M10 2v2M14 2v2M6 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>'
+    };
+    const filterBar = element('shiftFilter');
+    for (const [id, label] of [['', '全部班別'], ...core.shiftCategories]) {
+        const button = textNode('button', '', '');
+        button.type = 'button';
+        button.dataset.cat = id || 'all';
+        button.title = label;
+        button.setAttribute('aria-label', label);
+        button.setAttribute('aria-pressed', String(id === rosterFilter));
+        button.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${filterIcons[id || 'all']}</svg>`;
+        button.append(textNode('span', id ? label[0] : '全'));
+        button.addEventListener('click', () => {
+            rosterFilter = id;
+            filterBar.querySelectorAll('button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+            renderDaily();
+        });
+        filterBar.append(button);
     }
 
     element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${data.employees.length} 人`;
@@ -411,7 +430,6 @@
         });
     });
     element('rosterDate').addEventListener('change', () => renderDaily());
-    element('shiftFilter').addEventListener('change', () => renderDaily());
     element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(); });
     for (const [id, delta] of [['prevDay', -1], ['nextDay', 1]]) {
         element(id).addEventListener('click', () => {

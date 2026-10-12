@@ -25,11 +25,13 @@
 <body>
     <header class="masthead">
         <div class="header-bar">
-            <div class="brand"><img src="./assets/icon.svg" width="40" height="40" alt=""><h1>值班班表</h1></div>
+            <div class="brand"><img src="./assets/icon.svg" width="32" height="32" alt=""><h1>值班班表</h1></div>
             <label class="theme-switch" for="darkTheme"><span>深色</span><input id="darkTheme" type="checkbox" role="switch" aria-label="深色版型"></label>
         </div>
-        <p id="coverage" class="metadata">資料載入中</p>
-        <p id="dataStatus" class="status" role="status" hidden></p>
+        <div class="meta-row">
+            <p id="coverage" class="metadata">資料載入中</p>
+            <p id="dataStatus" class="status" role="status" hidden></p>
+        </div>
     </header>
     <main>
         <p id="fatal" class="notice error" role="alert" hidden></p>
@@ -56,8 +58,7 @@
                     <button id="goCurrent" type="button" class="plain">本月</button>
                     <button id="exportIcs" type="button" class="plain" title="下載目前顯示的月份或週的行事曆檔（.ics）">匯出此月 ICS</button>
                 </div>
-                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><h3 id="monthLabel"></h3><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button></div>
-                <div id="monthSummary" class="summary"></div>
+                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><h3 id="monthLabel"></h3><div id="monthSummary" class="summary"></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button></div>
                 <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                 <div id="calendar" class="calendar" aria-label="個人月曆"></div>
                 <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
@@ -77,7 +78,7 @@
             <div class="date-row"><label for="rosterDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天">&larr;</button><input id="rosterDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天">&rarr;</button></div>
             <p id="dailyNotice" class="notice" hidden></p>
             <div id="dailySummary" class="summary"></div>
-            <div class="roster-controls"><label for="shiftFilter">班別</label><select id="shiftFilter"><option value="">全部班別</option></select><label class="checkbox-label"><input id="includeRest" type="checkbox">含休假</label></div>
+            <div id="shiftFilter" class="filter-bar" role="group" aria-label="班別篩選"></div>
             <div id="dailyRoster" class="roster"></div>
         </section>
     </main>
