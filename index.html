@@ -46,7 +46,11 @@
                 <p id="employeeError" class="field-error" role="alert" hidden></p>
             </form>
             <div id="personalSchedule" hidden>
-                <div class="person-heading"><h2 id="employeeName"></h2><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
+                <div class="person-heading">
+                    <h2 id="employeeName"></h2>
+                    <section id="dayDetail" class="day-detail" aria-label="日期班別明細"><h3 id="selectedDate"></h3><div id="selectedShift"></div></section>
+                    <button id="clearEmployee" type="button" class="plain">清除工號</button>
+                </div>
                 <div class="view-bar">
                     <div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div>
                     <button id="goCurrent" type="button" class="plain">本月</button>
@@ -56,9 +60,8 @@
                 <div id="monthSummary" class="summary"></div>
                 <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                 <div id="calendar" class="calendar" aria-label="個人月曆"></div>
-                <div id="weekList" class="week-list" role="list" aria-label="個人週班表" hidden></div>
+                <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
                 <div class="legend"><span><i class="work-dot"></i>出勤</span><span><i class="rest-dot"></i>休假</span><span><i class="today-dot"></i>今日</span></div>
-                <section id="dayDetail" class="day-detail" aria-label="日期班別明細"><h3 id="selectedDate"></h3><div id="selectedShift"></div></section>
             </div>
         </section>
         <section id="current" aria-label="當前班表" hidden>

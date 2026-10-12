@@ -225,8 +225,15 @@
             const record = byDate.get(date);
             const shift = record && data.shifts[record.code];
             const colorClass = core.shiftClass(shift);
-            const row = textNode('div', '', `week-row${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}`);
-            row.setAttribute('role', 'listitem');
+            const row = textNode('button', '', `week-row${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}`);
+            row.type = 'button';
+            row.setAttribute('aria-pressed', String(date === selectedDate));
+            row.addEventListener('click', () => {
+                if (!data.dates.includes(date)) return;
+                selectedDate = date;
+                month = date.slice(0, 7);
+                renderPersonal();
+            });
             const day = textNode('div', '', 'week-day');
             day.append(textNode('strong', monthDay(date)), textNode('small', weekdayLabel(date)));
             const description = textNode('div', '', 'shift-text');
@@ -234,12 +241,13 @@
             row.append(day, textNode('span', record ? record.code : '—', `shift-code ${colorClass}`), description);
             list.append(row);
         }
+        renderSelectedDay();
     }
 
     function renderPersonal() {
         if (!employee) return;
         const isWeek = view === 'week';
-        for (const id of ['calendar', 'weekdays', 'dayDetail']) element(id).hidden = isWeek;
+        for (const id of ['calendar', 'weekdays']) element(id).hidden = isWeek;
         element('weekList').hidden = !isWeek;
         document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
         element('previousMonth').title = isWeek ? '上一週' : '上個月';
