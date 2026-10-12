@@ -69,6 +69,17 @@ assert.equal(category({ rest: false, color: 'night' }), 'night');
 assert.equal(category({ rest: false, color: null }), 'n');
 assert.equal(category({ rest: true, color: null }), 'rest');
 
+// Month stats: category counts, streak across the month boundary, next rest day.
+const statShifts = { W: { rest: false, color: 'morning' }, N: { rest: false, color: null }, X: { rest: true, color: null } };
+const statRecords = [['2026-10-30', 'W'], ['2026-10-31', 'W'], ['2026-11-01', 'N'], ['2026-11-02', 'X'], ['2026-11-03', 'W']].map(([date, code]) => ({ empId: '1', date, code }));
+assert.deepEqual(core.categoryCounts(statRecords, statShifts), { morning: 3, afternoon: 0, night: 0, n: 1, rest: 1 });
+const statDays = core.shiftsByDate(statRecords, statShifts);
+assert.equal(core.workStreak(statDays, '2026-11-01'), 3);
+assert.equal(core.workStreak(statDays, '2026-11-02'), 0);
+assert.equal(core.workStreak(statDays, '2026-11-09'), 0);
+assert.equal(core.nextRestDay(statDays, '2026-10-30'), '2026-11-02');
+assert.equal(core.nextRestDay(statDays, '2026-11-02'), null);
+
 // Weeks start on Monday.
 assert.equal(core.weekStart('2026-10-12'), '2026-10-12');
 assert.equal(core.weekStart('2026-10-18'), '2026-10-12');
