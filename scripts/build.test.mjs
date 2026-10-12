@@ -52,6 +52,15 @@ assert.ok(onDuty('L', '2026-10-31', '2026-11-01T05:59:00+08:00'));
 assert.ok(!onDuty('X', '2026-10-31', '2026-10-31T12:00:00+08:00'));
 assert.equal(core.taipeiDate(new Date('2026-10-31T16:30:00Z')), '2026-11-01');
 
+// Roster filter has five categories; N/N8 carry no color and fall into N.
+const category = shift => core.shiftCategory(shift);
+assert.deepEqual(core.shiftCategories.map(([, label]) => label), ['早班', '中班', '晚班', 'N班', '休假']);
+assert.equal(category({ rest: false, color: 'morning' }), 'morning');
+assert.equal(category({ rest: false, color: 'afternoon' }), 'afternoon');
+assert.equal(category({ rest: false, color: 'night' }), 'night');
+assert.equal(category({ rest: false, color: null }), 'n');
+assert.equal(category({ rest: true, color: null }), 'rest');
+
 // Weeks start on Monday.
 assert.equal(core.weekStart('2026-10-12'), '2026-10-12');
 assert.equal(core.weekStart('2026-10-18'), '2026-10-12');
