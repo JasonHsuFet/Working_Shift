@@ -156,6 +156,11 @@
         return `${shift.start}–${shift.end}${nextDay}`;
     }
 
+    // Personal view: show the hours actually worked, with the on-duty part when they differ.
+    function workTimeLabel(shift) {
+        return shift.fullStart ? `${shift.fullStart}–${shift.fullEnd}（值班 ${shift.start}–${shift.end}）` : timeLabel(shift);
+    }
+
     function dateLabel(date) {
         return new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(`${date}T00:00:00+08:00`));
     }
@@ -214,7 +219,7 @@
         const detail = textNode('div', '', 'shift-detail');
         const description = textNode('div', '', 'shift-text');
         const colorClass = core.shiftClass(shift);
-        description.append(textNode('p', shift.label, colorClass), textNode('small', timeLabel(shift), colorClass));
+        description.append(textNode('p', shift.label, colorClass), textNode('small', workTimeLabel(shift), colorClass));
         detail.append(textNode('span', record.code, `shift-code ${colorClass}`), description);
         container.append(detail);
     }
@@ -293,7 +298,7 @@
             const day = textNode('div', '', 'week-day');
             day.append(textNode('strong', monthDay(date)), textNode('small', weekdayLabel(date)));
             const description = textNode('div', '', 'shift-text');
-            description.append(textNode('p', shift ? shift.label : '無排班資料', colorClass), textNode('small', shift ? timeLabel(shift) : '—', colorClass));
+            description.append(textNode('p', shift ? shift.label : '無排班資料', colorClass), textNode('small', shift ? workTimeLabel(shift) : '—', colorClass));
             row.append(day, textNode('span', record ? record.code : '—', `shift-code ${colorClass}`), description);
             list.append(row);
         }
@@ -348,7 +353,7 @@
         const shift = record && data.shifts[record.code];
         element('colleagues').hidden = !shift || shift.rest;
         if (element('colleagues').hidden) return;
-        const others = data.records.filter(item => item.date === selectedDate && item.code === record.code && item.empId !== employee.empId)
+        const others = data.records.filter(item => item.date === selectedDate && data.shifts[item.code].group === shift.group && item.empId !== employee.empId)
             .map(item => employees.get(item.empId)).sort((left, right) => left.name.localeCompare(right.name));
         element('colleaguesTitle').textContent = others.length ? `同班同事（${record.code} · ${shift.label}）${others.length} 人` : '當天沒有其他同班同事';
         element('colleaguesList').replaceChildren(...others.map(person => {

@@ -17,15 +17,16 @@
         return value.toISOString().slice(0, 10);
     }
 
-    function bounds(record, shifts) {
+    // `full` uses the hours actually worked (including support time) instead of the on-duty hours.
+    function bounds(record, shifts, full = false) {
         const shift = shifts[record.code];
         if (!shift || shift.rest || !shift.start || !shift.end) return null;
         const timestamp = time => {
             const date = time === '24:00' ? addDays(record.date, 1) : record.date;
             return Date.parse(`${date}T${time === '24:00' ? '00:00' : time}:00+08:00`);
         };
-        const start = timestamp(shift.start);
-        let end = timestamp(shift.end);
+        const start = timestamp(full ? shift.fullStart || shift.start : shift.start);
+        let end = timestamp(full ? shift.fullEnd || shift.end : shift.end);
         if (end <= start) end += 86400000;
         return { start, end };
     }
@@ -115,7 +116,7 @@
         for (const record of data.records) {
             const shift = data.shifts[record.code];
             if (record.empId !== person.empId || !shift || shift.rest) continue;
-            const interval = bounds(record, data.shifts);
+            const interval = bounds(record, data.shifts, true);
             lines.push('BEGIN:VEVENT', `UID:${person.empId}-${record.date}-${encodeURIComponent(record.code)}@noc-schedule`, `DTSTAMP:${stamp}`);
             if (interval) lines.push(`DTSTART:${icsUtc(interval.start)}`, `DTEND:${icsUtc(interval.end)}`);
             else lines.push(`DTSTART;VALUE=DATE:${record.date.replaceAll('-', '')}`, `DTEND;VALUE=DATE:${addDays(record.date, 1).replaceAll('-', '')}`);

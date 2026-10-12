@@ -58,8 +58,11 @@ const timedSheet = [
     ['', '', 8, 'A', 'M1', 'T早', 'M2', 'T中', ...Array(27).fill('')]
 ];
 const timed = parseMonthSheet(timedSheet, 2026, 10, new Map([['A', '1']]), defs).shifts;
-assert.deepEqual(['M1', 'T早'].map(code => [timed[code].start, timed[code].end]), [['08:00', '19:00'], ['08:00', '19:00']]);
-assert.deepEqual(['M2', 'T中'].map(code => [timed[code].start, timed[code].end]), [['13:00', '24:00'], ['13:00', '24:00']]);
+// M1/T早/M2/T中: duty is a normal 8 hours and they roster with the base code; the hours actually worked are kept separately.
+assert.deepEqual(['M1', 'T早'].map(code => [timed[code].start, timed[code].end]), [['08:00', '16:00'], ['08:00', '16:00']]);
+assert.deepEqual(['M2', 'T中'].map(code => [timed[code].start, timed[code].end]), [['16:00', '24:00'], ['16:00', '24:00']]);
+assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => [timed[code].fullStart, timed[code].fullEnd]), [['08:00', '19:00'], ['08:00', '19:00'], ['13:00', '24:00'], ['13:00', '24:00']]);
+assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => timed[code].group), ['1', '早', '2', '中']);
 assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => core.shiftCategory(timed[code])), ['morning', 'morning', 'afternoon', 'afternoon']);
 const category = shift => core.shiftCategory(shift);
 assert.deepEqual(core.shiftCategories.map(([, label]) => label), ['早班', '中班', '晚班', 'N班', '休假']);
@@ -86,6 +89,11 @@ assert.equal(core.weekStart('2026-10-18'), '2026-10-12');
 assert.equal(core.weekStart('2026-11-01'), '2026-10-26');
 
 // ICS export: only this person's work shifts; midnight end stays in Asia/Taipei; untimed shifts are all-day; long lines are folded.
+const supportShifts = { M1: { label: 'Mobile', rest: false, start: '08:00', end: '16:00', fullStart: '08:00', fullEnd: '19:00' } };
+const supportRecord = { empId: '1', date: '2026-10-12', code: 'M1' };
+assert.equal(core.bounds(supportRecord, supportShifts).end, Date.parse('2026-10-12T16:00:00+08:00'));
+assert.equal(core.bounds(supportRecord, supportShifts, true).end, Date.parse('2026-10-12T19:00:00+08:00'));
+assert.ok(core.icsCalendar({ shifts: supportShifts, records: [supportRecord] }, { empId: '1', name: 'A' }).includes('DTEND:20261012T110000Z'));
 const longLabel = '班'.repeat(40);
 const icsData = {
     shifts: { '2': { label: 'TX 中班', start: '16:00', end: '24:00', rest: false }, Q: { label: longLabel, rest: false }, X: { label: '例假日', rest: true } },

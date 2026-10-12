@@ -17,15 +17,18 @@ const SHIFT_TYPES = {
     N: 'NT-正', N8: 'E001', X: '例假日', Y: '休息日', Z: '國定假日', S: 'NT-S', T: 'NT-T'
 };
 const TIME_ALIASES = { 'T早': '早', 'T中': '中', M1: '1', '大夜': '3', '小夜': '2', '日': '1' };
-// Published hours for these codes; they take priority over the NNOC班別 sheet.
-const FIXED_TIMES = { M1: ['08:00', '19:00'], 'T早': ['08:00', '19:00'], M2: ['13:00', '24:00'], 'T中': ['13:00', '24:00'] };
+// On-duty hours of these codes (they take priority over the NNOC班別 sheet) and the hours actually worked: the extra hours are support, not duty.
+const DUTY_TIMES = { M1: ['08:00', '16:00'], 'T早': ['08:00', '16:00'], M2: ['16:00', '24:00'], 'T中': ['16:00', '24:00'] };
+const FULL_TIMES = { M1: ['08:00', '19:00'], 'T早': ['08:00', '19:00'], M2: ['13:00', '24:00'], 'T中': ['13:00', '24:00'] };
+// Same duty hours as the base code, so they are rostered and counted as colleagues together.
+const ROSTER_GROUPS = { M1: '1', 'T早': '早', M2: '2', 'T中': '中' };
 const REST_CODES = new Set(['X', 'Y', 'Z', 'S', 'T']);
 const COLORS = {
     '1': 'morning', M1: 'morning', '早': 'morning', 'T早': 'morning', '日': 'morning',
     '2': 'afternoon', M2: 'afternoon', '中': 'afternoon', 'T中': 'afternoon', '小夜': 'afternoon',
     '3': 'night', '晚': 'night', '大夜': 'night'
 };
-const GROUP_LABELS = { '1': 'Mobile 早班', M1: 'Mobile 早班', '早': 'TX 早班', 'T早': 'TX 早班', '中': 'TX 中班', 'T中': 'TX 中班' };
+const GROUP_LABELS = { '1': 'Mobile 早班', '早': 'TX 早班', '中': 'TX 中班' };
 
 function text(value) {
     return value == null ? '' : String(value).trim();
@@ -122,10 +125,11 @@ export function parseMonthSheet(rows, year, month, ids, defs) {
             if (!type) throw new Error(`${monthKey} 無法辨識班別：第 ${index + 1} 列 ${date}「${code}」`);
             const rest = REST_CODES.has(code);
             const timeDef = defs.get(SHIFT_TYPES[TIME_ALIASES[code] || code]);
-            const fixed = FIXED_TIMES[code];
-            const group = code;
+            const duty = DUTY_TIMES[code];
+            const full = FULL_TIMES[code];
+            const group = ROSTER_GROUPS[code] || code;
             const label = GROUP_LABELS[group] || (defs.get(type)?.label || type).replaceAll('NNOC', 'NOC').replace(/^NOC-/, '');
-            shifts[code] = { type, label, group, color: COLORS[code] || null, rest, start: rest ? null : fixed?.[0] || timeDef?.start || null, end: rest ? null : fixed?.[1] || timeDef?.end || null };
+            shifts[code] = { type, label, group, color: COLORS[code] || null, rest, start: rest ? null : duty?.[0] || timeDef?.start || null, end: rest ? null : duty?.[1] || timeDef?.end || null, ...(full && { fullStart: full[0], fullEnd: full[1] }) };
             if (!rest && (!shifts[code].start || !shifts[code].end)) warnings.add(`班別 ${code} (${type}) 缺少時間，未納入當前值班判斷`);
             records.push({ empId, date, code });
         });
