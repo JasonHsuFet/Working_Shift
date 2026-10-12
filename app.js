@@ -310,6 +310,7 @@
             element('empId').setAttribute('aria-invalid', 'true');
             employee = null;
             element('personalSchedule').hidden = true;
+            element('employeeForm').hidden = false;
             try { localStorage.removeItem('nnoc-static-empId'); } catch (_) { }
             return;
         }
@@ -318,6 +319,7 @@
         element('empId').removeAttribute('aria-invalid');
         notice('employeeError', '');
         element('personalSchedule').hidden = false;
+        element('employeeForm').hidden = true;
         try { localStorage.setItem('nnoc-static-empId', normalized); } catch (_) { }
         renderPersonal();
     }
@@ -339,32 +341,25 @@
         renderRoster('unknownRoster', unknown, '');
     }
 
-    function renderDaily(resetFilter = false) {
+    function renderDaily() {
         const date = element('rosterDate').value;
         const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
         element('prevDay').disabled = !validDate || date <= data.range.start;
         element('nextDay').disabled = !validDate || date >= data.range.end;
         const records = core.dayRecords(data, date);
         const filter = element('shiftFilter');
-        if (resetFilter) {
-            filter.replaceChildren();
-            const all = textNode('option', '全部班別');
-            all.value = '';
-            filter.append(all);
-            for (const code of [...new Set(records.map(record => data.shifts[record.code].group))]) {
-                const record = records.find(item => data.shifts[item.code].group === code);
-                const shift = data.shifts[code] || data.shifts[record.code];
-                const option = textNode('option', `${code} · ${shift.label}`, core.shiftClass(shift));
-                option.value = code;
-                filter.append(option);
-            }
-        }
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
         filter.className = filter.selectedOptions[0]?.className || '';
         summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
         notice('dailyNotice', data.dates.includes(date) ? '' : '此日期不在已發布資料期間。');
-        const visible = records.filter(record => (element('includeRest').checked || !data.shifts[record.code].rest) && (!filter.value || filter.value === data.shifts[record.code].group));
+        const visible = records.filter(record => !filter.value || core.shiftCategory(data.shifts[record.code]) === filter.value);
         renderRoster('dailyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
+    }
+
+    for (const [id, label] of core.shiftCategories) {
+        const option = textNode('option', label, core.shiftClass({ color: id }));
+        option.value = id;
+        element('shiftFilter').append(option);
     }
 
     element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${data.employees.length} 人`;
@@ -378,6 +373,7 @@
         employee = null;
         element('empId').value = '';
         element('personalSchedule').hidden = true;
+        element('employeeForm').hidden = false;
         notice('employeeError', '');
         element('empId').removeAttribute('aria-invalid');
         try { localStorage.removeItem('nnoc-static-empId'); } catch (_) { }
@@ -414,18 +410,17 @@
             if (activeTab === 'daily') renderDaily();
         });
     });
-    element('rosterDate').addEventListener('change', () => renderDaily(true));
+    element('rosterDate').addEventListener('change', () => renderDaily());
     element('shiftFilter').addEventListener('change', () => renderDaily());
-    element('includeRest').addEventListener('change', () => renderDaily());
-    element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(true); });
+    element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(); });
     for (const [id, delta] of [['prevDay', -1], ['nextDay', 1]]) {
         element(id).addEventListener('click', () => {
             if (!element('rosterDate').value) return;
             element('rosterDate').value = core.addDays(element('rosterDate').value, delta);
-            renderDaily(true);
+            renderDaily();
         });
     }
-    renderDaily(true);
+    renderDaily();
 
     const urlEmpId = new URLSearchParams(location.search).get('empno');
     let remembered = null;

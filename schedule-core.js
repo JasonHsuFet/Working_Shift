@@ -46,6 +46,14 @@
         return shift?.color ? `shift-${shift.color}` : '';
     }
 
+    // Roster filter groups: morning = Mobile/TX 早班 + 日, afternoon = 中/小夜, night = 晚/大夜, n = N/N8; the rest follow the shift color from the build.
+    const shiftCategories = [['morning', '早班'], ['afternoon', '中班'], ['night', '晚班'], ['n', 'N班'], ['rest', '休假']];
+
+    function shiftCategory(shift) {
+        if (shift.rest) return 'rest';
+        return ['morning', 'afternoon', 'night'].includes(shift.color) ? shift.color : 'n';
+    }
+
     // Weeks run Monday to Sunday, matching the calendar grid.
     function weekStart(date) {
         return addDays(date, -((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7));
@@ -91,6 +99,6 @@
         return `${lines.map(foldLine).join('\r\n')}\r\n`;
     }
 
-    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, shiftClass, weekStart, icsCalendar };
+    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, shiftClass, shiftCategories, shiftCategory, weekStart, icsCalendar };
     root.ScheduleCore = api;
 })(globalThis);
