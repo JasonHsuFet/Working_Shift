@@ -79,6 +79,15 @@
         </section>
     </main>
     <footer><p id="updatedAt"></p><p>Asia/Taipei · 以發布班表為準</p></footer>
+    <dialog id="empDialog" aria-labelledby="empDialogTitle">
+        <form id="empDialogForm" method="dialog" novalidate>
+            <h2 id="empDialogTitle">請輸入員工編號</h2>
+            <p class="metadata">輸入後會記住在這個瀏覽器，下次不需再輸入。</p>
+            <input id="empDialogId" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="員工編號" aria-label="員工編號" autofocus>
+            <p id="empDialogError" class="field-error" role="alert" hidden>此工號不在本次班表資料中，請確認工號。</p>
+            <div class="dialog-actions"><button id="empDialogSkip" type="button" class="plain">稍後再說</button><button type="submit" class="primary">確定</button></div>
+        </form>
+    </dialog>
     <noscript><p class="notice error">請啟用 JavaScript 以查看班表。</p></noscript>
 </body>
 </html>

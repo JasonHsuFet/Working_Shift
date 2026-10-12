@@ -414,23 +414,37 @@
     renderDaily(true);
 
     const urlEmpId = new URLSearchParams(location.search).get('empno');
-    if (urlEmpId !== null) {
+    let remembered = null;
+    try { remembered = localStorage.getItem('nnoc-static-empId'); } catch (_) { }
+    const dialog = element('empDialog');
+    // Browsers without <dialog> fall back to the inline form.
+    function askEmployee() {
+        notice('employeeError', '請輸入工號以檢視個人班表。');
+        if (dialog.showModal) dialog.showModal();
+        else element('empId').focus();
+    }
+    element('empDialogForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const normalized = core.normalizeEmpId(element('empDialogId').value);
+        const error = element('empDialogError');
+        error.hidden = employees.has(normalized);
+        if (!error.hidden) {
+            element('empDialogId').setAttribute('aria-invalid', 'true');
+            return;
+        }
+        dialog.close();
+        selectEmployee(normalized);
+    });
+    element('empDialogSkip').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => { if (!employee) element('empId').focus(); });
+    if (urlEmpId?.trim()) {
         const normalized = core.normalizeEmpId(urlEmpId);
         element('empId').value = normalized;
         selectEmployee(normalized);
+    } else if (remembered && employees.has(remembered)) {
+        selectEmployee(remembered);
     } else {
-        try {
-            const remembered = localStorage.getItem('nnoc-static-empId');
-            if (remembered && employees.has(remembered)) {
-                selectEmployee(remembered);
-            } else {
-                element('empId').focus();
-                notice('employeeError', '請輸入工號以檢視個人班表。');
-            }
-        } catch (_) {
-            element('empId').focus();
-            notice('employeeError', '請輸入工號以檢視個人班表。');
-        }
+        askEmployee();
     }
 
     setInterval(() => { if (activeTab === 'current') renderCurrent(); }, 30000);

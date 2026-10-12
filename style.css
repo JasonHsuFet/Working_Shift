@@ -158,6 +158,10 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--teal); }
 .unknown-times { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; }.unknown-times summary { cursor: pointer; min-height: 44px; }
 footer { padding: 18px 22px max(24px, env(safe-area-inset-bottom)); color: var(--muted); font-size: 11px; }
 footer p + p { margin-top: 4px; }
+dialog { width: min(92vw, 360px); padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+dialog input { width: 100%; margin-top: 14px; }
+.dialog-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 16px; }
 .shift-morning { color: var(--shift-morning) !important; }
 .shift-afternoon { color: var(--shift-afternoon) !important; }
 .shift-night { color: var(--shift-night) !important; }
