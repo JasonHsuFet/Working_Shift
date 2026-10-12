@@ -553,19 +553,22 @@
     }
     renderDaily();
 
-    // A horizontal swipe on touch screens does what the previous/next buttons do.
+    // A horizontal swipe (touch, pen or mouse drag) does what the previous/next buttons do.
     function onSwipe(target, previous, next) {
         let start = null;
-        target.addEventListener('touchstart', event => {
-            start = event.touches.length === 1 && !event.target.closest('input') ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
-        }, { passive: true });
-        target.addEventListener('touchend', event => {
-            if (!start) return;
-            const dx = event.changedTouches[0].clientX - start.x;
-            const dy = event.changedTouches[0].clientY - start.y;
+        target.addEventListener('pointerdown', event => {
+            start = event.isPrimary && !event.target.closest('input') ? { id: event.pointerId, x: event.clientX, y: event.clientY } : null;
+        });
+        target.addEventListener('pointercancel', () => { start = null; });
+        target.addEventListener('pointerup', event => {
+            if (!start || event.pointerId !== start.id) return;
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
             start = null;
+            // A drag that selected text is a selection, not a swipe.
+            if (window.getSelection().toString()) return;
             if (Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.5) (dx < 0 ? next : previous)();
-        }, { passive: true });
+        });
     }
     onSwipe(element('personalSchedule'), () => element('previousMonth').click(), () => element('nextMonth').click());
     onSwipe(element('daily'), () => element('prevDay').click(), () => element('nextDay').click());
