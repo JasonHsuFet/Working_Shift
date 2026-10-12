@@ -53,6 +53,14 @@ assert.ok(!onDuty('X', '2026-10-31', '2026-10-31T12:00:00+08:00'));
 assert.equal(core.taipeiDate(new Date('2026-10-31T16:30:00Z')), '2026-11-01');
 
 // Roster filter has five categories; N/N8 carry no color and fall into N.
+const timedSheet = [
+    ['', '', 'Total', 'Name', ...Array.from({ length: 31 }, (_, i) => i + 1)],
+    ['', '', 8, 'A', 'M1', 'T早', 'M2', 'T中', ...Array(27).fill('')]
+];
+const timed = parseMonthSheet(timedSheet, 2026, 10, new Map([['A', '1']]), defs).shifts;
+assert.deepEqual(['M1', 'T早'].map(code => [timed[code].start, timed[code].end]), [['08:00', '19:00'], ['08:00', '19:00']]);
+assert.deepEqual(['M2', 'T中'].map(code => [timed[code].start, timed[code].end]), [['13:00', '24:00'], ['13:00', '24:00']]);
+assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => core.shiftCategory(timed[code])), ['morning', 'morning', 'afternoon', 'afternoon']);
 const category = shift => core.shiftCategory(shift);
 assert.deepEqual(core.shiftCategories.map(([, label]) => label), ['早班', '中班', '晚班', 'N班', '休假']);
 assert.equal(category({ rest: false, color: 'morning' }), 'morning');
