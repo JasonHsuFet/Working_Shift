@@ -19,29 +19,72 @@
     document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = true; });
     let fromCache = false;
     let data;
+    let months = [];
+    let baseMonth;
+    const employees = new Map();
+    const loadedMonths = new Map();
+    const shiftDefinedIn = {};
+
+    async function getJson(file) {
+        const response = await fetch(`./data/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout?.(30000) });
+        if (!response.ok) throw new Error(`${file} 下載失敗（HTTP ${response.status}）`);
+        if (response.headers.has('x-offline-cache')) fromCache = true;
+        return response.json();
+    }
+
+    // Each month is fetched once and merged into `data`; a later month wins when two define the same shift code.
+    function loadMonth(key) {
+        if (!months.includes(key)) return Promise.resolve();
+        if (!loadedMonths.has(key)) {
+            loadedMonths.set(key, getJson(`${key}.json`).then(part => {
+                for (const [code, shift] of Object.entries(part.shifts)) {
+                    if (!(code in data.shifts) || key >= shiftDefinedIn[code]) {
+                        data.shifts[code] = shift;
+                        shiftDefinedIn[code] = key;
+                    }
+                }
+                data.records.push(...part.records);
+                part.employees.forEach(person => employees.set(person.empId, person));
+                part.warnings.forEach(warning => { if (!data.warnings.includes(warning)) data.warnings.push(warning); });
+            }, error => {
+                loadedMonths.delete(key);
+                throw error;
+            }));
+        }
+        return loadedMonths.get(key);
+    }
+
+    // Loads the given months, plus the months next to them so streaks and next-rest lookups can cross a month boundary.
+    async function ensure(wanted) {
+        const keys = wanted.filter(key => months.includes(key));
+        const near = new Set(keys.flatMap(key => [months[months.indexOf(key) - 1], months[months.indexOf(key) + 1]]));
+        try {
+            await Promise.all([...keys.map(loadMonth), ...[...near].filter(key => key && !keys.includes(key)).map(key => loadMonth(key).catch(() => { }))]);
+            notice('fatal', '');
+            return true;
+        } catch (error) {
+            notice('fatal', `載入班表失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}`);
+            return false;
+        }
+    }
+
     try {
         if (location.protocol === 'file:') throw new Error('請從 GitHub Pages 或本機 HTTP 網站開啟；直接開啟 HTML 無法下載班表');
         if (!core) throw new Error('班表程式未完整載入，請確認所有 JavaScript 檔案已發布');
-        const getJson = async file => {
-            const response = await fetch(`./data/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout?.(30000) });
-            if (!response.ok) throw new Error(`${file} 下載失敗（HTTP ${response.status}）`);
-            if (response.headers.has('x-offline-cache')) fromCache = true;
-            return response.json();
-        };
         const index = await getJson('index.json');
-        // ponytail: loads all months up front (~50KB each); fetch per month if history grows large
-        const parts = await Promise.all(index.months.map(month => getJson(`${month}.json`)));
-        const people = new Map(parts.flatMap(part => part.employees.map(person => [person.empId, person])));
-        const dates = parts.flatMap(part => part.dates).sort();
+        months = [...index.months].sort();
+        if (!months.length) throw new Error('沒有可用的班表月份');
+        const [lastYear, lastMonth] = months.at(-1).split('-').map(Number);
         data = {
-            range: { start: dates[0], end: dates.at(-1) },
-            dates,
-            shifts: Object.assign({}, ...parts.map(part => part.shifts)),
-            employees: [...people.values()],
-            records: parts.flatMap(part => part.records),
-            warnings: [...new Set(parts.flatMap(part => part.warnings))],
+            range: { start: `${months[0]}-01`, end: `${months.at(-1)}-${String(new Date(Date.UTC(lastYear, lastMonth, 0)).getUTCDate()).padStart(2, '0')}` },
+            shifts: {},
+            records: [],
+            warnings: [],
             sourceUpdatedAt: index.generatedAt
         };
+        baseMonth = months.includes(core.taipeiDate().slice(0, 7)) ? core.taipeiDate().slice(0, 7) : months.at(-1);
+        await loadMonth(baseMonth);
+        await ensure([baseMonth]);
     } catch (error) {
         element('fatal').hidden = false;
         element('fatal').textContent = `班表載入失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}。請重新整理再試一次。`;
@@ -65,12 +108,11 @@
         }
     }
 
-    const employees = new Map(data.employees.map(employee => [employee.empId, employee]));
-    const sortedEmployees = [...employees.values()].sort((left, right) => left.empId.localeCompare(right.empId, undefined, { numeric: true }));
     // <datalist> filters by substring, so the list is rebuilt to hold only IDs that start with the typed text.
     function suggestEmployees(event) {
         const typed = core.normalizeEmpId(event.target.value);
-        element('empList').replaceChildren(...(typed ? sortedEmployees.filter(person => person.empId.startsWith(typed)).slice(0, 10) : []).map(person => {
+        const matches = typed ? [...employees.values()].filter(person => person.empId.startsWith(typed)).sort((left, right) => left.empId.localeCompare(right.empId, undefined, { numeric: true })).slice(0, 10) : [];
+        element('empList').replaceChildren(...matches.map(person => {
             const option = document.createElement('option');
             option.value = person.empId;
             option.label = person.name;
@@ -78,9 +120,8 @@
         }));
     }
     for (const id of ['empId', 'empDialogId']) element(id).addEventListener('input', suggestEmployees);
-    const months = [...new Set(data.dates.map(date => date.slice(0, 7)))].sort();
     let employee = null;
-    let month = months.includes(core.taipeiDate().slice(0, 7)) ? core.taipeiDate().slice(0, 7) : months.at(-1);
+    let month = baseMonth;
     let selectedDate = '';
     let activeTab = 'personal';
     let view = 'month';
@@ -97,6 +138,8 @@
         element(id).textContent = message;
         element(id).hidden = !message;
     }
+
+    const hasDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date) && months.includes(date.slice(0, 7));
 
     function summary(id, entries) {
         element(id).replaceChildren(...entries.map(([label, count]) => {
@@ -208,6 +251,7 @@
             calendar.append(button);
         }
         renderSelectedDay();
+        renderInsights(`${month}-01`, `${month}-31`, '本月');
     }
 
     function syncSelectedDate() {
@@ -241,10 +285,10 @@
             row.type = 'button';
             row.setAttribute('aria-pressed', String(date === selectedDate));
             row.addEventListener('click', () => {
-                if (!data.dates.includes(date)) return;
+                if (!hasDate(date)) return;
                 selectedDate = date;
                 month = date.slice(0, 7);
-                renderPersonal();
+                showPersonal();
             });
             const day = textNode('div', '', 'week-day');
             day.append(textNode('strong', monthDay(date)), textNode('small', weekdayLabel(date)));
@@ -254,6 +298,7 @@
             list.append(row);
         }
         renderSelectedDay();
+        renderInsights(days[0], days[6], '本週');
     }
 
     function renderPersonal() {
@@ -268,16 +313,56 @@
         element('nextMonth').setAttribute('aria-label', element('nextMonth').title);
         element('goCurrent').textContent = isWeek ? '本週' : '本月';
         element('exportIcs').textContent = isWeek ? '匯出此週 ICS' : '匯出此月 ICS';
-        element('goCurrent').disabled = !data.dates.includes(core.taipeiDate());
+        element('goCurrent').disabled = !hasDate(core.taipeiDate());
         if (isWeek) renderWeek();
         else renderCalendar();
     }
 
-    function shiftWeek(delta) {
+    // Loads the months the current view needs (and their neighbours) before drawing it.
+    async function showPersonal() {
+        if (!employee) return;
+        syncSelectedDate();
+        const start = core.weekStart(selectedDate);
+        await ensure(view === 'week' ? [...new Set([start.slice(0, 7), core.addDays(start, 6).slice(0, 7)])] : [month]);
+        renderPersonal();
+    }
+
+    // Counts for the shown range, plus streak / next rest day / same-shift colleagues relative to the selected day.
+    function renderInsights(from, to, scope) {
+        const mine = data.records.filter(record => record.empId === employee.empId);
+        const counts = core.categoryCounts(mine.filter(record => record.date >= from && record.date <= to), data.shifts);
+        element('statCounts').replaceChildren(textNode('em', scope), ...core.shiftCategories.map(([id, label]) => {
+            const item = textNode('span', '');
+            item.append(textNode('b', label[0], core.shiftClass({ color: id })), textNode('strong', String(counts[id])));
+            return item;
+        }));
+        const byDate = core.shiftsByDate(mine, data.shifts);
+        const streak = core.workStreak(byDate, selectedDate);
+        const nextRest = core.nextRestDay(byDate, selectedDate);
+        const parts = [];
+        if (streak) parts.push(`至 ${monthDay(selectedDate)} 已連續上班 ${streak} 天`);
+        else if (byDate.get(selectedDate)?.rest) parts.push(`${monthDay(selectedDate)} 休假`);
+        if (nextRest) parts.push(`下個休假日 ${monthDay(nextRest)}（${Math.round((Date.parse(`${nextRest}T00:00:00Z`) - Date.parse(`${selectedDate}T00:00:00Z`)) / 86400000)} 天後）`);
+        element('statStreak').textContent = parts.join(' · ');
+        const record = mine.find(item => item.date === selectedDate);
+        const shift = record && data.shifts[record.code];
+        element('colleagues').hidden = !shift || shift.rest;
+        if (element('colleagues').hidden) return;
+        const others = data.records.filter(item => item.date === selectedDate && item.code === record.code && item.empId !== employee.empId)
+            .map(item => employees.get(item.empId)).sort((left, right) => left.name.localeCompare(right.name));
+        element('colleaguesTitle').textContent = others.length ? `同班同事（${record.code} · ${shift.label}）${others.length} 人` : '當天沒有其他同班同事';
+        element('colleaguesList').replaceChildren(...others.map(person => {
+            const chip = textNode('span', person.name);
+            chip.title = person.empId;
+            return chip;
+        }));
+    }
+
+    async function shiftWeek(delta) {
         const moved = core.addDays(selectedDate, delta * 7);
         selectedDate = moved < data.range.start ? data.range.start : moved > data.range.end ? data.range.end : moved;
         month = selectedDate.slice(0, 7);
-        renderPersonal();
+        await showPersonal();
     }
 
     function exportIcs() {
@@ -297,7 +382,7 @@
 
     function updateStatus() {
         const offline = !navigator.onLine || fromCache;
-        const outOfRange = !data.dates.includes(core.taipeiDate());
+        const outOfRange = !hasDate(core.taipeiDate());
         const status = element('dataStatus');
         status.hidden = false;
         status.className = `status${offline || outOfRange ? ' warn' : ''}`;
@@ -333,15 +418,16 @@
         element('personalSchedule').hidden = false;
         element('employeeForm').hidden = true;
         try { localStorage.setItem('nnoc-static-empId', normalized); } catch (_) { }
-        renderPersonal();
+        showPersonal();
     }
 
-    function renderCurrent() {
+    async function renderCurrent() {
         const now = new Date();
         const today = core.taipeiDate(now);
+        if (hasDate(today)) await ensure([today.slice(0, 7)]);
         element('currentTime').textContent = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(now);
         const records = core.currentRecords(data, now);
-        const inRange = data.dates.includes(today);
+        const inRange = hasDate(today);
         const unknown = core.dayRecords(data, today).filter(record => {
             const shift = data.shifts[record.code];
             return !shift.rest && (!shift.start || !shift.end);
@@ -353,15 +439,19 @@
         renderRoster('unknownRoster', unknown, '');
     }
 
-    function renderDaily() {
+    let dailyRun = 0;
+    async function renderDaily() {
         const date = element('rosterDate').value;
         const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
         element('prevDay').disabled = !validDate || date <= data.range.start;
         element('nextDay').disabled = !validDate || date >= data.range.end;
+        const run = ++dailyRun;
+        if (hasDate(date)) await ensure([date.slice(0, 7)]);
+        if (run !== dailyRun) return;
         const records = core.dayRecords(data, date);
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
         summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
-        notice('dailyNotice', data.dates.includes(date) ? '' : '此日期不在已發布資料期間。');
+        notice('dailyNotice', hasDate(date) ? '' : '此日期不在已發布資料期間。');
         const visible = records.filter(record => !rosterFilter || core.shiftCategory(data.shifts[record.code]) === rosterFilter);
         renderRoster('dailyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
     }
@@ -393,7 +483,7 @@
         filterBar.append(button);
     }
 
-    element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${data.employees.length} 人`;
+    element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${employees.size} 人`;
     element('updatedAt').textContent = data.sourceUpdatedAt
         ? `班表資料產生時間：${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.sourceUpdatedAt))}`
         : '網站未提供資料產生時間';
@@ -411,22 +501,28 @@
         element('empId').focus();
     });
     for (const [id, delta] of [['previousMonth', -1], ['nextMonth', 1]]) {
-        element(id).addEventListener('click', () => {
-            if (view === 'week') shiftWeek(delta);
-            else { month = months[months.indexOf(month) + delta]; renderPersonal(); }
+        element(id).addEventListener('click', async () => {
+            if (view === 'week') {
+                await shiftWeek(delta);
+                return;
+            }
+            const target = months[months.indexOf(month) + delta];
+            if (!target) return;
+            month = target;
+            await showPersonal();
         });
     }
     document.querySelectorAll('[data-view]').forEach(button => {
         button.addEventListener('click', () => {
             view = button.dataset.view;
             try { localStorage.setItem('nnoc-static-view', view); } catch (_) { }
-            renderPersonal();
+            showPersonal();
         });
     });
     element('goCurrent').addEventListener('click', () => {
         selectedDate = core.taipeiDate();
         month = selectedDate.slice(0, 7);
-        renderPersonal();
+        showPersonal();
     });
     element('exportIcs').addEventListener('click', exportIcs);
     document.querySelectorAll('[data-tab]').forEach(button => {
@@ -451,6 +547,23 @@
         });
     }
     renderDaily();
+
+    // A horizontal swipe on touch screens does what the previous/next buttons do.
+    function onSwipe(target, previous, next) {
+        let start = null;
+        target.addEventListener('touchstart', event => {
+            start = event.touches.length === 1 && !event.target.closest('input') ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+        }, { passive: true });
+        target.addEventListener('touchend', event => {
+            if (!start) return;
+            const dx = event.changedTouches[0].clientX - start.x;
+            const dy = event.changedTouches[0].clientY - start.y;
+            start = null;
+            if (Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.5) (dx < 0 ? next : previous)();
+        }, { passive: true });
+    }
+    onSwipe(element('personalSchedule'), () => element('previousMonth').click(), () => element('nextMonth').click());
+    onSwipe(element('daily'), () => element('prevDay').click(), () => element('nextDay').click());
 
     const urlEmpId = new URLSearchParams(location.search).get('empno');
     let remembered = null;

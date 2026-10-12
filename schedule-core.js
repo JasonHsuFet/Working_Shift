@@ -54,6 +54,32 @@
         return ['morning', 'afternoon', 'night'].includes(shift.color) ? shift.color : 'n';
     }
 
+    function categoryCounts(records, shifts) {
+        const counts = Object.fromEntries(shiftCategories.map(([id]) => [id, 0]));
+        for (const record of records) counts[shiftCategory(shifts[record.code])]++;
+        return counts;
+    }
+
+    // date -> shift for one person's records.
+    function shiftsByDate(records, shifts) {
+        return new Map(records.map(record => [record.date, shifts[record.code]]));
+    }
+
+    // Consecutive working days ending on `date` (0 when that day is a rest day or has no record).
+    function workStreak(byDate, date) {
+        let count = 0;
+        for (let day = date; byDate.get(day) && !byDate.get(day).rest; day = addDays(day, -1)) count++;
+        return count;
+    }
+
+    function nextRestDay(byDate, date) {
+        for (let offset = 1; offset <= 62; offset++) {
+            const day = addDays(date, offset);
+            if (byDate.get(day)?.rest) return day;
+        }
+        return null;
+    }
+
     // Weeks run Monday to Sunday, matching the calendar grid.
     function weekStart(date) {
         return addDays(date, -((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7));
@@ -99,6 +125,6 @@
         return `${lines.map(foldLine).join('\r\n')}\r\n`;
     }
 
-    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, shiftClass, shiftCategories, shiftCategory, weekStart, icsCalendar };
+    const api = { normalizeEmpId, taipeiDate, addDays, bounds, currentRecords, dayRecords, shiftClass, shiftCategories, shiftCategory, categoryCounts, shiftsByDate, workStreak, nextRestDay, weekStart, icsCalendar };
     root.ScheduleCore = api;
 })(globalThis);
