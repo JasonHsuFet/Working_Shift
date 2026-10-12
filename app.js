@@ -247,6 +247,7 @@
         element('previousMonth').setAttribute('aria-label', element('previousMonth').title);
         element('nextMonth').setAttribute('aria-label', element('nextMonth').title);
         element('goCurrent').textContent = isWeek ? '本週' : '本月';
+        element('exportIcs').textContent = isWeek ? '匯出此週 ICS' : '匯出此月 ICS';
         element('goCurrent').disabled = !data.dates.includes(core.taipeiDate());
         if (isWeek) renderWeek();
         else renderCalendar();
@@ -261,8 +262,13 @@
 
     function exportIcs() {
         if (!employee) return;
-        const url = URL.createObjectURL(new Blob([core.icsCalendar(data, employee)], { type: 'text/calendar;charset=utf-8' }));
-        const link = Object.assign(document.createElement('a'), { href: url, download: `noc-shift-${employee.empId}.ics` });
+        // Month view exports the shown month; week view exports the shown Monday-Sunday week.
+        const from = view === 'week' ? core.weekStart(selectedDate) : `${month}-01`;
+        const to = view === 'week' ? core.addDays(from, 6) : `${month}-31`;
+        const shown = { shifts: data.shifts, records: data.records.filter(record => record.date >= from && record.date <= to) };
+        const suffix = view === 'week' ? `${from}_${to}` : month;
+        const url = URL.createObjectURL(new Blob([core.icsCalendar(shown, employee)], { type: 'text/calendar;charset=utf-8' }));
+        const link = Object.assign(document.createElement('a'), { href: url, download: `noc-shift-${employee.empId}-${suffix}.ics` });
         document.body.append(link);
         link.click();
         link.remove();
