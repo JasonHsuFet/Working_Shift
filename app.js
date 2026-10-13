@@ -192,7 +192,7 @@
             people.setAttribute('role', 'list');
             for (const record of group.sort((left, right) => employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
                 const person = employees.get(record.empId);
-                const row = textNode('div', '', 'roster-item');
+                const row = textNode('div', '', `roster-item${record.empId === employee?.empId ? ' me' : ''}`);
                 row.setAttribute('role', 'listitem');
                 const name = textNode('strong', person.name);
                 name.append(textNode('small', person.empId));
@@ -379,6 +379,7 @@
         status.hidden = false;
         status.className = `status${offline || outOfRange ? ' warn' : ''}`;
         status.textContent = offline ? '無法連線，目前顯示已儲存的班表' : outOfRange ? '今日不在班表涵蓋期間' : '已連線，班表已同步';
+        element('liveDot').classList.toggle('warn', offline || outOfRange);
     }
 
     // Reloads when a newer schedule was published; otherwise just refreshes the connection status.
@@ -413,10 +414,13 @@
         showPersonal();
     }
 
+    let currentRun = 0;
     async function renderCurrent() {
+        const run = ++currentRun;
         const now = new Date();
         const today = core.taipeiDate(now);
         if (hasDate(today)) await ensure([today.slice(0, 7)]);
+        if (run !== currentRun) return;
         element('currentTime').textContent = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(now);
         const records = core.currentRecords(data, now);
         const inRange = hasDate(today);
@@ -440,6 +444,7 @@
         const run = ++dailyRun;
         if (hasDate(date)) await ensure([date.slice(0, 7)]);
         if (run !== dailyRun) return;
+        element('dailyDateLabel').textContent = validDate ? dateLabel(date) : '';
         const records = core.dayRecords(data, date);
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
         summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);

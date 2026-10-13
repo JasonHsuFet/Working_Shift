@@ -60,7 +60,7 @@
             </div>
         </section>
         <section id="current" aria-label="當前班表" hidden>
-            <div class="section-heading"><h2>目前值班</h2><span class="live-dot" aria-hidden="true"></span></div>
+            <div class="section-heading"><h2>當前班表</h2><span id="liveDot" class="live-dot" aria-hidden="true"></span></div>
             <p id="currentTime" class="metadata"></p>
             <p id="currentNotice" class="notice" hidden></p>
             <div id="currentSummary" class="summary"></div>
@@ -70,6 +70,7 @@
         <section id="daily" aria-label="當日班表" hidden>
             <div class="section-heading"><h2>當日班表</h2><button id="goToday" type="button" class="plain">今天</button></div>
             <div class="date-row"><label for="rosterDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天">&larr;</button><input id="rosterDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天">&rarr;</button></div>
+            <p id="dailyDateLabel" class="metadata"></p>
             <p id="dailyNotice" class="notice" hidden></p>
             <div id="dailySummary" class="summary"></div>
             <div id="shiftFilter" class="filter-bar" role="group" aria-label="班別篩選"></div>
