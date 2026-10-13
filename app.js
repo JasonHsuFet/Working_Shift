@@ -141,12 +141,14 @@
 
     const hasDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date) && months.includes(date.slice(0, 7));
 
-    function summary(id, entries) {
-        element(id).replaceChildren(...entries.map(([label, count]) => {
-            const node = textNode('span', '');
+    function summary(id, entries, showToday = false) {
+        const items = entries.map(([label, count]) => {
+            const node = textNode('span', '', label === '出勤' ? 'legend-work' : label === '休假' ? 'legend-rest' : '');
             node.append(textNode('strong', String(count)), document.createTextNode(label));
             return node;
-        }));
+        });
+        if (showToday) items.push(textNode('span', '今日', 'legend-today'));
+        element(id).replaceChildren(...items);
     }
 
     function timeLabel(shift) {
@@ -236,7 +238,7 @@
         element('previousMonth').disabled = position <= 0;
         element('nextMonth').disabled = position >= months.length - 1;
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
-        summary('monthSummary', [['出勤', records.length - restCount], ['休假', restCount]]);
+        summary('monthSummary', [['出勤', records.length - restCount], ['休假', restCount]], true);
         const calendar = element('calendar');
         calendar.replaceChildren();
         const firstDay = new Date(`${month}-01T00:00:00Z`);
@@ -279,7 +281,7 @@
         element('previousMonth').disabled = days[0] <= data.range.start;
         element('nextMonth').disabled = days[6] >= data.range.end;
         const restCount = [...byDate.values()].filter(record => data.shifts[record.code].rest).length;
-        summary('monthSummary', [['出勤', byDate.size - restCount], ['休假', restCount]]);
+        summary('monthSummary', [['出勤', byDate.size - restCount], ['休假', restCount]], true);
         const list = element('weekList');
         list.replaceChildren();
         for (const date of days) {
@@ -317,6 +319,8 @@
         element('previousMonth').setAttribute('aria-label', element('previousMonth').title);
         element('nextMonth').setAttribute('aria-label', element('nextMonth').title);
         element('monthLabel').title = isWeek ? '回到本週' : '回到本月';
+        element('goCurrent').setAttribute('aria-label', isWeek ? '回到本週' : '回到本月');
+        element('goCurrent').disabled = !hasDate(core.taipeiDate());
         element('exportIcs').title = isWeek ? '匯出此週行事曆（.ics）' : '匯出此月行事曆（.ics）';
         if (isWeek) renderWeek();
         else renderCalendar();
@@ -523,12 +527,14 @@
             showPersonal();
         });
     });
-    element('monthLabel').addEventListener('click', () => {
+    function goCurrent() {
         if (!hasDate(core.taipeiDate())) return;
         selectedDate = core.taipeiDate();
         month = selectedDate.slice(0, 7);
         showPersonal();
-    });
+    }
+    element('monthLabel').addEventListener('click', goCurrent);
+    element('goCurrent').addEventListener('click', goCurrent);
     element('exportIcs').addEventListener('click', exportIcs);
     document.querySelectorAll('[data-tab]').forEach(button => {
         button.addEventListener('click', () => {
