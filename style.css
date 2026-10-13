@@ -195,6 +195,8 @@ dialog input { width: 100%; margin-top: 14px; }
 }
 @media (max-width: 520px) {
     body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+    /* Auto margins in a flex column disable stretching, so set the width explicitly. */
+    .masthead, main { width: 100%; }
     main { flex: 1; display: flex; flex-direction: column; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
     #personal:not([hidden]), #personalSchedule:not([hidden]) { flex: 1; display: flex; flex-direction: column; }
     .calendar:not([hidden]) { flex: 1; grid-auto-rows: minmax(40px, 1fr); }
