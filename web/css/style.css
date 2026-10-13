@@ -104,8 +104,9 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .calendar-panel { padding-top: 12px; }
 .month-nav .icon-button { border: 0; border-radius: 50%; background: transparent; }
 .month-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px; margin-bottom: 8px; }
-.period-label { justify-self: start; width: 136px; max-width: 100%; display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 6px; border: 0; border-radius: 8px; background: none; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.period-label span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; line-height: 1.2; }
+.period-label { justify-self: start; min-width: 138px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 2px; min-height: 36px; padding: 0 6px; border: 0; border-radius: 8px; background: none; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.period-label > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; line-height: 1.2; }
+.period-month { display: inline-block; min-width: 2ch; text-align: right; }
 .period-year { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .period-label .icon { width: 16px; height: 16px; color: var(--muted); }
 .period-label:not(:disabled):hover { background: var(--cell); }

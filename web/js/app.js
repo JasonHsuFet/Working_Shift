@@ -180,7 +180,7 @@ function renderCalendar() {
     const today = schedule.taipeiDate();
     syncSelectedDate();
     element('employeeName').textContent = employee.name;
-    element('periodText').textContent = `${month.slice(0, 4)} 年 ${Number(month.slice(5))} 月`;
+    element('periodText').replaceChildren(`${month.slice(0, 4)} 年 `, textNode('span', Number(month.slice(5)), 'period-month'), ' 月');
     const position = months.indexOf(month);
     element('prevPeriod').disabled = position <= 0;
     element('nextPeriod').disabled = position >= months.length - 1;
