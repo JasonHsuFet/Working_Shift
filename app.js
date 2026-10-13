@@ -163,6 +163,12 @@
         return new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(`${date}T00:00:00+08:00`));
     }
 
+    const categoryLabel = Object.fromEntries(core.shiftCategories);
+    const categoryOrder = core.shiftCategories.map(([id]) => id);
+
+    // Morning/afternoon/night and rest are one group each; N-type shifts keep their own group. Each person keeps their shift code as a tag.
+    const rosterKey = shift => { const category = core.shiftCategory(shift); return category === 'n' ? shift.group : category; };
+
     function renderRoster(id, records, emptyMessage) {
         const container = element(id);
         container.replaceChildren();
@@ -172,31 +178,33 @@
         }
         const groups = new Map();
         for (const record of records) {
-            const code = data.shifts[record.code].group;
-            if (!groups.has(code)) groups.set(code, []);
-            groups.get(code).push(record);
+            const key = rosterKey(data.shifts[record.code]);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(record);
         }
         const ordered = [...groups].sort(([left, leftGroup], [right, rightGroup]) => {
-            const leftShift = data.shifts[left] || data.shifts[leftGroup[0].code];
-            const rightShift = data.shifts[right] || data.shifts[rightGroup[0].code];
-            return Number(leftShift.rest) - Number(rightShift.rest) || (leftShift.start || '99').localeCompare(rightShift.start || '99') || left.localeCompare(right);
+            const leftShift = data.shifts[leftGroup[0].code];
+            const rightShift = data.shifts[rightGroup[0].code];
+            return categoryOrder.indexOf(core.shiftCategory(leftShift)) - categoryOrder.indexOf(core.shiftCategory(rightShift)) || (leftShift.start || '99').localeCompare(rightShift.start || '99') || left.localeCompare(right);
         });
-        for (const [code, group] of ordered) {
-            const shift = data.shifts[code] || data.shifts[group[0].code];
+        for (const [key, group] of ordered) {
+            const shift = data.shifts[group[0].code];
             const section = textNode('section', '', 'roster-group');
             const heading = textNode('div', '', 'group-heading');
             const colorClass = core.shiftClass(shift);
-            heading.append(textNode('h3', `${code} · ${shift.label}`, colorClass), textNode('span', `${timeLabel(shift)} · ${group.length} 人`, colorClass));
+            const times = [...new Set(group.map(record => timeLabel(data.shifts[record.code])))].join(' / ');
+            heading.append(textNode('h3', categoryLabel[key] || `${key} · ${shift.label}`, colorClass), textNode('span', `${times} · ${group.length} 人`, colorClass));
             section.append(heading);
             const people = textNode('div', '', 'roster-people');
             people.setAttribute('role', 'list');
-            for (const record of group.sort((left, right) => employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
+            for (const record of group.sort((left, right) => left.code.localeCompare(right.code) || employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
                 const person = employees.get(record.empId);
+                const personShift = data.shifts[record.code];
                 const row = textNode('div', '', `roster-item${record.empId === employee?.empId ? ' me' : ''}`);
                 row.setAttribute('role', 'listitem');
                 const name = textNode('strong', person.name);
                 name.append(textNode('small', person.empId));
-                row.append(name);
+                row.append(name, textNode('span', personShift.rest ? personShift.label : record.code, 'roster-tag'));
                 people.append(row);
             }
             section.append(people);
