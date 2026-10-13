@@ -6,37 +6,40 @@
     <meta name="theme-color" content="#ffffff">
     <meta name="robots" content="noindex,nofollow">
     <title>NOC 值班班表</title>
-    <script>
-        (function () {
-            let theme = null;
-            try { theme = localStorage.getItem('noc-static-theme'); } catch (_) { }
-            const urlTheme = new URLSearchParams(location.search).get('theme');
-            if (urlTheme === 'dark' || urlTheme === 'light') theme = urlTheme;
-            if (theme !== 'dark' && theme !== 'light') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            document.documentElement.dataset.theme = theme;
-            document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#212624' : '#ffffff';
-        })();
-    </script>
+    <script src="./js/theme.js"></script>
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="./style.css">
-    <script defer src="./schedule-core.js"></script>
-    <script defer src="./app.js"></script>
+    <link rel="stylesheet" href="./css/style.css">
+    <script type="module" src="./js/app.js"></script>
 </head>
 <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+        <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+        <symbol id="icon-system" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+        <symbol id="icon-light" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+        <symbol id="icon-dark" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+        <symbol id="icon-all" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+        <symbol id="icon-now" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+        <symbol id="icon-morning" viewBox="0 0 24 24"><path d="M12 2v8M4.93 10.93l1.41 1.41M2 18h2M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M8 6l4-4 4 4M16 18a4 4 0 0 0-8 0"/></symbol>
+        <symbol id="icon-afternoon" viewBox="0 0 24 24"><path d="M12 10V2M4.93 10.93l1.41 1.41M2 18h2M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M16 6l-4 4-4-4M16 18a4 4 0 0 0-8 0"/></symbol>
+        <symbol id="icon-night" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+        <symbol id="icon-n" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+        <symbol id="icon-rest" viewBox="0 0 24 24"><path d="M10 2v2M14 2v2M6 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/></symbol>
+    </svg>
     <header class="masthead">
         <div class="header-bar">
             <div class="brand"><img src="./assets/icon.svg" width="32" height="32" alt=""><h1>值班班表</h1><p id="dataStatus" class="status" role="status" hidden></p></div>
-            <label class="theme-switch" for="darkTheme"><span aria-hidden="true">&#9790;</span><input id="darkTheme" type="checkbox" role="switch" aria-label="深色版型"></label>
+            <button id="themeToggle" type="button" class="theme-toggle" aria-label="主題：跟隨系統" title="主題：跟隨系統"><svg data-theme-icon="system" class="icon" aria-hidden="true"><use href="#icon-system"/></svg><svg data-theme-icon="light" hidden class="icon" aria-hidden="true"><use href="#icon-light"/></svg><svg data-theme-icon="dark" hidden class="icon" aria-hidden="true"><use href="#icon-dark"/></svg></button>
         </div>
     </header>
     <main>
         <p id="fatal" class="notice error" role="alert" hidden></p>
         <p id="sourceWarnings" class="notice" role="status" popover="manual" tabindex="0" hidden></p>
         <nav class="tabs" aria-label="班表檢視">
-            <button type="button" data-tab="personal" aria-current="page">個人班表</button>
-            <button type="button" data-tab="daily">當日班表</button>
+            <a href="#/personal" data-tab="personal" aria-current="page">個人班表</a>
+            <a href="#/on-duty" data-tab="on-duty">當日班表</a>
         </nav>
         <section id="personal" aria-label="個人班表">
             <form id="employeeForm" class="employee-form">
@@ -56,20 +59,20 @@
                     </section>
                     <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
                 </div>
-                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><div class="month-title-row"><button id="monthLabel" type="button" class="month-label"></button><button id="goCurrent" type="button" class="today-button" aria-label="回到本月">今</button></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
+                <div class="month-nav"><button id="prevPeriod" type="button" class="icon-button" aria-label="上個月" title="上個月"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><div class="nav-title"><div class="month-title-row"><button id="periodLabel" type="button" class="period-label"></button><button id="goCurrent" type="button" class="today-button" aria-label="回到本月">今</button></div></div><button id="nextPeriod" type="button" class="icon-button" aria-label="下個月" title="下個月"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
                 <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                 <div id="calendar" class="calendar" aria-label="個人月曆"></div>
                 <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
                 <div class="person-stats"><div id="statCounts" class="stat-counts"></div></div>
             </div>
         </section>
-        <section id="daily" aria-label="當日班表" hidden>
-            <div class="date-row"><label for="rosterDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天">&larr;</button><input id="rosterDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天">&rarr;</button><button id="goToday" type="button" class="plain">今天</button></div>
-            <div class="live-row metadata"><span id="liveDot" class="live-dot" aria-hidden="true"></span><span id="dailyDateLabel"></span></div>
-            <p id="dailyNotice" class="notice" hidden></p>
-            <div id="dailySummary" class="summary"></div>
+        <section id="on-duty" aria-label="當日班表" hidden>
+            <div class="date-row"><label for="onDutyDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><input id="onDutyDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button><button id="goToday" type="button" class="plain">今天</button></div>
+            <div class="live-row metadata"><span id="liveDot" class="live-dot" aria-hidden="true"></span><span id="onDutyDateLabel"></span></div>
+            <p id="onDutyNotice" class="notice" hidden></p>
+            <div id="onDutySummary" class="summary"></div>
             <div id="shiftFilter" class="filter-bar" role="group" aria-label="班別篩選"></div>
-            <div id="dailyRoster" class="roster"></div>
+            <div id="onDutyRoster" class="roster"></div>
             <details id="unknownTimes" class="unknown-times" hidden><summary>時間未定義的排班</summary><div id="unknownRoster"></div></details>
         </section>
     </main>

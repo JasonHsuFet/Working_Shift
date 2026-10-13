@@ -9,19 +9,24 @@ NOC 值班班表網站。純靜態前端，由 Excel 班表在建置時轉成 JS
   下方顯示該月（週）的早／中／晚／N／休天數，以及從所選日期起算的連續上班天數與下個休假日；所選日是出勤時，會列出當天同班別（同代碼）的同事。
 - **當日班表**：預設為今天的「現」（此刻值班人員，每 30 秒更新）；可用日期列切換日期，或用「全／早／中／晚／N／休」按鈕篩選。「現」只在今天可用，按「今天」會回到「現」。
 - **手機左右滑動**：個人班表切上／下月或週，當日班表切前／後一天。
-- **工號輸入**：網址帶 `?empno=工號` 直接顯示；沒帶且瀏覽器沒有記憶時會跳出視窗詢問，輸入後記在該瀏覽器；輸入時依工號開頭自動完成。
-- **網址參數**：可併用，例如 `?empno=工號&theme=dark`。
+- **工號輸入**：網址 `#/personal/工號` 直接顯示；沒帶且瀏覽器沒有記憶時會跳出視窗詢問，輸入後記在該瀏覽器；輸入時依工號開頭自動完成。
+- **網址（hash 路由）**：
 
-  | 參數 | 值 | 說明 |
-  |---|---|---|
-  | `empno` | 工號 | 直接顯示該人員班表 |
-  | `theme` | `dark`／`light` | 強制深色／淺色，優先於已儲存的設定與系統偏好；只在該次載入生效，不會寫入瀏覽器。其他值會被忽略 |
+  | 路由 | 說明 |
+  |---|---|
+  | `#/personal` | 個人班表；有記憶的工號會自動帶入 |
+  | `#/personal/工號` | 直接顯示該人員班表 |
+  | `#/on-duty` | 當日班表 |
+
+  月份、週、日期與篩選不進網址也不記憶，每次開啟都是本月／今天，存成主畫面後不會卡在舊的時期。
+  舊的 `?empno=工號` 連結仍會自動轉成 `#/personal/工號`（`?theme=` 已移除）。
 - **按需載入**：開啟時只下載當前月與前後各一個月，其他月份在切換到時才下載。工號查詢與自動完成只認得已載入月份中的人員。
-- 其他：深色模式、離線時顯示已儲存的班表並提示狀態、可加入主畫面（PWA）。
+- **主題**：右上圓形按鈕循環「跟隨系統 → 淺色 → 深色」。預設跟隨系統（`prefers-color-scheme`，系統切換時即時變色）；手動選淺色／深色才會記在瀏覽器。
+- 其他：離線時顯示已儲存的班表並提示狀態、可加入主畫面（PWA）。
 
 ### 加入主畫面（iOS）
 
-- `manifest.webmanifest` 刻意不設 `start_url`，iOS 會以加入主畫面當下的完整網址開啟，所以要用帶參數的網址（如 `?empno=工號&theme=dark`）再加入，之後每次從圖示開啟都會帶著參數。已加入的舊圖示需刪除後重新加入。
+- `manifest.webmanifest` 的 `start_url` 為站台根目錄 `./`（不綁路由）：從主畫面圖示開啟時由路由導向 `#/personal`，並帶入已記住的工號；第一次開啟（主畫面 App 與瀏覽器的儲存空間可能分開）會詢問工號並記住，之後一律從本月開始。已加入的舊圖示需刪除後重新加入。
 - 主畫面圖示使用 `assets/apple-touch-icon.png`（180x180、不透明方形）；透明圓形圖在 iOS 深色圖示模式下四角會變黑。
 
 ## 更新班表
@@ -41,7 +46,7 @@ NOC 值班班表網站。純靜態前端，由 Excel 班表在建置時轉成 JS
 
 ## 班別規則
 
-班別代碼、分類與時間定義在 [scripts/build.mjs](scripts/build.mjs)。
+班別代碼、分類與時間定義在 [scripts/lib/shift-rules.mjs](scripts/lib/shift-rules.mjs)。
 
 | 篩選 | 班別代碼 | 時間來源 |
 |---|---|---|
@@ -53,7 +58,7 @@ NOC 值班班表網站。純靜態前端，由 Excel 班表在建置時轉成 JS
 
 - 分類依班別顏色判斷：`morning`／`afternoon`／`night` 對應早／中／晚，沒有顏色且非休假的歸 N。
 - `M1`、`T早`、`M2`、`T中` 實際工作時間分別是 08:00–19:00、13:00–24:00，但 16:00 以後（M1、T早）與 16:00 以前（M2、T中）是支援，不值班。當前班表、當日班表與同班同事都依值班時間計算，且會和 `1`、`早`、`2`、`中` 編在同一組（`ROSTER_GROUPS`）；個人班表與 ICS 則顯示完整工作時間（例如「08:00–19:00（值班 08:00–16:00）」）。
-- 新增班別代碼時，到 `build.mjs` 補上 `SHIFT_TYPES`（代碼對應班別名稱）與 `COLORS`（決定分類與顏色）；時間要特別指定時加在 `DUTY_TIMES`（值班時間）與 `FULL_TIMES`（完整工作時間），優先於 Excel 的設定。
+- 新增班別代碼時，到 `shift-rules.mjs` 補上 `SHIFT_TYPES`（代碼對應班別名稱）與 `COLORS`（決定分類與顏色）；時間要特別指定時加在 `DUTY_TIMES`（值班時間）與 `FULL_TIMES`（完整工作時間），優先於 Excel 的設定。
 - 沒有時間定義的出勤班別會出現在「時間未定義」，不納入「現」（目前值班），ICS 則匯出為全天事件。
 
 ## 本機開發
@@ -62,26 +67,36 @@ NOC 值班班表網站。純靜態前端，由 Excel 班表在建置時轉成 JS
 
 ```
 pnpm install
-pnpm test      # 檢查 Excel 結構、班別解析、當班判斷、ICS、分類與統計
+pnpm test      # test/*.test.mjs：Excel 結構與班別解析、當班判斷、ICS、分類統計、路由
 pnpm build     # 產生 dist/（網站檔案 + data/YYYY-MM.json）
 pnpm preview   # 預覽 dist/
 ```
 
-- 不能直接用瀏覽器開啟 `index.html`（`file://` 無法下載班表），請用 `pnpm preview` 或任何 HTTP 伺服器。
+- 不能直接用瀏覽器開啟 `web/index.html`（`file://` 無法下載班表），請用 `pnpm preview` 或任何 HTTP 伺服器。
 - 測試只檢查資料結構，不比對特定人員或班別，因此更新班表不會因內容變動而失敗。
 
 ## 專案結構
 
 ```
-index.html, app.js, style.css      頁面、互動邏輯、樣式
-schedule-core.js                   共用邏輯：當班判斷、週起始日、班別分類與統計、連續上班／下個休假日、ICS 產生
-sw.js, manifest.webmanifest        Service Worker（網路優先、離線備援）與 PWA 設定
-assets/                            圖示（icon.svg、PWA 用 icon-*.png、iOS 用 apple-touch-icon.png）
+web/                               網站原始檔，build 時整包複製到 dist/
+  index.html, manifest.webmanifest 頁面（含 SVG 圖示 sprite）與 PWA 設定
+  sw.js                            Service Worker（網路優先、離線備援），需放在站台根目錄
+  css/style.css                    樣式
+  js/app.js                        畫面繪製與事件、路由對應
+  js/schedule.js                   班表業務邏輯：當班判斷、班別分類與統計、值班分組、時間標籤、ICS
+  js/store.js                      班表 JSON 按需下載與合併、檢查新版
+  js/router.js                     hash 路由（navigo 風格 API）
+  js/theme.js                      主題（在 <head> 同步執行，避免閃爍）
+  assets/                          圖示（icon.svg、PWA 用 icon-*.png、iOS 用 apple-touch-icon.png）
 data/                              Excel 來源檔
 scripts/build.mjs                  Excel → JSON 與網站打包
-scripts/build.test.mjs             測試
+scripts/lib/excel.mjs              Excel 讀取與解析（工號表、班別表、月份工作表）
+scripts/lib/shift-rules.mjs        班別代碼規則
+test/                              測試（node --test）
 .github/workflows/pages.yml        測試、建置與部署
 ```
+
+命名規則：檔名 kebab-case、以領域命名；瀏覽器端 `.js`（ES module），Node 端 `.mjs`；員工編號一律 `empId`；當日班表一律 `on-duty`；localStorage key 為 `noc.<名稱>`。
 
 ## 資料公開範圍
 
