@@ -64,7 +64,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 [hidden] { display: none !important; }
 .masthead, main, footer { max-width: 720px; margin: 0 auto; }
 .masthead { position: relative; padding: calc(15px + env(safe-area-inset-top, 0px)) 16px 8px; background: var(--paper); }
-.masthead::before { content: ""; position: absolute; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 5px; background: var(--red); pointer-events: none; }
+/* Fills the iOS status bar area so the bar reads as one solid red strip. */
+.masthead::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: calc(5px + env(safe-area-inset-top, 0px)); background: var(--red); pointer-events: none; }
 .header-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
 .theme-switch { display: flex; align-items: center; gap: 6px; min-height: 32px; font-size: 16px; cursor: pointer; margin-left: auto; }
 .theme-switch input[type="checkbox"] { appearance: none; width: 38px; height: 22px; border: 1px solid var(--input-border); border-radius: 11px; background: var(--line); margin: 0; cursor: pointer; flex-shrink: 0; position: relative; }
