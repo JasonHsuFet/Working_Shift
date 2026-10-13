@@ -10,6 +10,8 @@
         (function () {
             let theme = null;
             try { theme = localStorage.getItem('noc-static-theme'); } catch (_) { }
+            const urlTheme = new URLSearchParams(location.search).get('theme');
+            if (urlTheme === 'dark' || urlTheme === 'light') theme = urlTheme;
             if (theme !== 'dark' && theme !== 'light') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             document.documentElement.dataset.theme = theme;
             document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#212624' : '#ffffff';
