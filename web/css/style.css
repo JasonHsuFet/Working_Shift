@@ -136,6 +136,7 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .stat-counts em { font-style: normal; font-size: 11px; color: var(--muted); }
 .stat-counts b { font-weight: 700; }
 .stat-counts strong { margin-left: 4px; font-variant-numeric: tabular-nums; }
+.stat-line { margin-top: 4px; font-size: 12px; color: var(--muted); }
 .colleagues { display: grid; gap: 4px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .colleagues h3 { font-size: 12px; font-weight: 400; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }

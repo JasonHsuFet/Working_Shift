@@ -104,12 +104,12 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    state "月檢視<br/>月曆格＋選定日明細＋本月統計" as Month
-    state "週檢視<br/>7 列清單＋選定日明細＋本週統計" as Week
+    state "月檢視<br/>月曆格＋選定日明細＋本月統計、連續上班、下個休假日" as Month
+    state "週檢視<br/>7 列清單＋選定日明細＋本週統計、連續上班、下個休假日" as Week
 
-    [*] --> Month: 每次載入、每次換人都從月檢視開始
-    Month --> Week: 點「週」（不保存）
-    Week --> Month: 點「月」
+    [*] --> Month: 每次載入、每次換人都從本月開始（上次選週則進週檢視）
+    Month --> Week: 點「週」（記在 noc.view）
+    Week --> Month: 點「月」（記在 noc.view）
 
     Month --> Month: ← / → / 左右滑：上下一個已發布月份（兩端停用）
     Month --> Month: 點日期格：改選定日
@@ -119,8 +119,8 @@ stateDiagram-v2
     Week --> Week: 「今」或標題：跳回今天
     note right of Month
         起始月份 = 本月（未發布則最新月份），選定日 = 今天（不在該月則 1 號）
-        月份、週、選定日都不進網址也不存 localStorage：重新整理後回到本月
-        換成不同員工時重設為：本月、月檢視、今天
+        月份、週、選定日都不進網址也不存 localStorage：重新整理後回到本月（月／週檢視例外，存在 noc.view）
+        換成不同員工時重設為：本月、記住的檢視、今天
         月份下載失敗：頂端顯示錯誤，仍以已載入資料繪製
     end note
 ```

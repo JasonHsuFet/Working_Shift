@@ -5,6 +5,7 @@ import { createRouter } from './router.js';
 
 const element = id => document.getElementById(id);
 const EMP_ID_KEY = 'noc.empId';
+const VIEW_KEY = 'noc.view';
 
 // legacy: ?empno=/?theme= from old links and home-screen icons; remove when no longer used
 if (location.search) {
@@ -13,9 +14,11 @@ if (location.search) {
 }
 // legacy: keys before the noc.* naming; remove once old installs have migrated
 try {
-    const old = localStorage.getItem('nnoc-static-empId');
-    if (old && !localStorage.getItem(EMP_ID_KEY)) localStorage.setItem(EMP_ID_KEY, old);
-    for (const key of ['nnoc-static-empId', 'nnoc-static-view']) localStorage.removeItem(key);
+    for (const [oldKey, key] of [['nnoc-static-empId', EMP_ID_KEY], ['nnoc-static-view', VIEW_KEY]]) {
+        const old = localStorage.getItem(oldKey);
+        if (old && !localStorage.getItem(key)) localStorage.setItem(key, old);
+        localStorage.removeItem(oldKey);
+    }
 } catch (_) { }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => { });
@@ -62,12 +65,16 @@ function suggestEmployees(event) {
     }));
 }
 for (const id of ['empId', 'empDialogId']) element(id).addEventListener('input', suggestEmployees);
-// Period and view are page state only: every visit opens on the current month, so a saved home-screen URL never pins an old period.
+// The period is page state only: every visit opens on the current month, so a saved home-screen URL never pins an old period.
+// The month/week view is a preference and is remembered.
+function storedView() {
+    try { return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'month'; } catch (_) { return 'month'; }
+}
 let employee = null;
 let month = store.baseMonth;
 let selectedDate = '';
 let activeTab = 'personal';
-let view = 'month';
+let view = storedView();
 
 function textNode(tag, text, className) {
     const node = document.createElement(tag);
@@ -280,6 +287,14 @@ function renderInsights(from, to, scope) {
         item.append(textNode('b', label[0], schedule.shiftClass({ color: id })), textNode('strong', String(counts[id])));
         return item;
     }));
+    const byDate = schedule.shiftsByDate(mine, data.shifts);
+    const streak = schedule.workStreak(byDate, selectedDate);
+    const nextRest = schedule.nextRestDay(byDate, selectedDate);
+    const parts = [];
+    if (streak) parts.push(`至 ${monthDay(selectedDate)} 已連續上班 ${streak} 天`);
+    else if (byDate.get(selectedDate)?.rest) parts.push(`${monthDay(selectedDate)} 休假`);
+    if (nextRest) parts.push(`下個休假日 ${monthDay(nextRest)}（${Math.round((Date.parse(`${nextRest}T00:00:00Z`) - Date.parse(`${selectedDate}T00:00:00Z`)) / 86400000)} 天後）`);
+    element('statStreak').textContent = parts.join(' · ');
     const record = mine.find(item => item.date === selectedDate);
     const shift = record && data.shifts[record.code];
     element('colleagues').hidden = !shift || shift.rest;
@@ -351,7 +366,7 @@ function selectEmployee(empId) {
     if (employee !== selected) {
         month = store.baseMonth;
         selectedDate = '';
-        view = 'month';
+        view = storedView();
     }
     employee = selected;
     element('empId').removeAttribute('aria-invalid');
@@ -449,6 +464,7 @@ for (const [id, delta] of [['prevPeriod', -1], ['nextPeriod', 1]]) {
 document.querySelectorAll('[data-view]').forEach(button => {
     button.addEventListener('click', () => {
         view = button.dataset.view;
+        try { localStorage.setItem(VIEW_KEY, view); } catch (_) { }
         showPersonal();
     });
 });
