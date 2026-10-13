@@ -94,8 +94,11 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .input-row input { width: 100%; flex: 1; }
 .primary { border: 1px solid var(--primary-bg); background: var(--primary-bg); color: white; padding: 8px 18px; font-weight: 700; min-height: 40px; white-space: nowrap; }
 .field-error { color: var(--red); margin-top: 6px; font-size: 13px; }
-.person-heading { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; align-items: center; gap: 2px 16px; margin: 6px 0 4px; }
+.person-card { display: grid; gap: 4px; margin: 6px 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--wash); }
+.person-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .person-heading h2 { font-size: 17px; min-width: 0; overflow-wrap: anywhere; }
+.info-row { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 34px; }
+.info-label { flex: 0 0 3.5em; color: var(--muted); font-size: 12px; }
 .plain { padding: 4px 10px; background: var(--cell); border: 1px solid var(--line); color: var(--teal); min-height: 40px; font-size: 13px; white-space: nowrap; }
 .person-actions { display: flex; gap: 6px; }
 .view-toggle { display: inline-flex; border: 1px solid var(--input-border); border-radius: 6px; overflow: hidden; }
@@ -136,17 +139,17 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .stat-counts em { font-style: normal; font-size: 11px; color: var(--muted); }
 .stat-counts b { font-weight: 700; }
 .stat-counts strong { margin-left: 4px; font-variant-numeric: tabular-nums; }
-.colleagues { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 2px 0 8px; }
+.colleagues { display: grid; gap: 4px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .colleagues h3 { font-size: 12px; font-weight: 400; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chips span { padding: 2px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--cell); font-size: 12px; }
 #personalSchedule, #daily { touch-action: pan-y pinch-zoom; }
-.day-detail { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.day-detail { min-width: 0; display: grid; gap: 4px; }
 .day-detail h3 { font-size: 14px; }
 .shift-detail { display: flex; gap: 8px; align-items: center; }
 .shift-code { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 6px; background: var(--cell); border: 1px solid var(--line); color: var(--teal); font-weight: 700; font-size: 14px; }
 .shift-text { min-width: 0; }.shift-text p { font-size: 13px; overflow-wrap: anywhere; }.shift-text small { display: block; color: var(--muted); margin-top: 0; font-size: 11px; }
-.section-heading { display: flex; align-items: center; justify-content: space-between; min-height: 34px; }
+.live-row { display: flex; align-items: center; gap: 6px; }
 .live-dot { width: 8px; height: 8px; background: var(--teal); border-radius: 50%; }
 .live-dot.warn { background: var(--rest-dot); }
 .roster-item.me { border-color: var(--teal); box-shadow: inset 3px 0 0 var(--teal); }
@@ -204,7 +207,5 @@ dialog input { width: 100%; margin-top: 14px; }
     #personal:not([hidden]), #personalSchedule:not([hidden]) { flex: 1; display: flex; flex-direction: column; }
     .calendar:not([hidden]) { flex: 1; grid-auto-rows: minmax(40px, 1fr); }
     #weekList:not([hidden]) { flex: 1; grid-auto-rows: minmax(46px, 1fr); }
-    .person-heading { grid-template-columns: minmax(0, 1fr) auto; }
-    .person-heading .day-detail { grid-column: 1 / -1; order: 3; }
 }
 @media (prefers-reduced-motion: no-preference) { main > section { animation: appear .18s ease-out; } @keyframes appear { from { opacity: .6; transform: translateY(3px); } to { opacity: 1; transform: none; } } }

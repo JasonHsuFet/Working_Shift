@@ -46,12 +46,17 @@
                 <p id="employeeError" class="field-error" role="alert" hidden></p>
             </form>
             <div id="personalSchedule" hidden>
-                <div class="person-heading">
-                    <h2 id="employeeName"></h2>
-                    <section id="dayDetail" class="day-detail" aria-label="日期班別明細"><h3 id="selectedDate"></h3><div id="selectedShift"></div></section>
-                    <div class="person-actions"><button id="exportIcs" type="button" class="plain">匯出 ICS</button><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
+                <div class="person-card">
+                    <div class="person-heading">
+                        <div class="info-row"><span class="info-label">姓名</span><h2 id="employeeName"></h2></div>
+                        <div class="person-actions"><button id="exportIcs" type="button" class="plain">匯出 ICS</button><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
+                    </div>
+                    <section id="dayDetail" class="day-detail" aria-label="日期班別明細">
+                        <div class="info-row"><span class="info-label">日期</span><h3 id="selectedDate"></h3></div>
+                        <div class="info-row"><span class="info-label">班別</span><div id="selectedShift"></div></div>
+                    </section>
+                    <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
                 </div>
-                <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
                 <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><div class="month-title-row"><button id="monthLabel" type="button" class="month-label"></button><button id="goCurrent" type="button" class="today-button" aria-label="回到本月">今</button></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
                 <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                 <div id="calendar" class="calendar" aria-label="個人月曆"></div>
@@ -60,16 +65,14 @@
             </div>
         </section>
         <section id="current" aria-label="當前班表" hidden>
-            <div class="section-heading"><h2>當前班表</h2><span id="liveDot" class="live-dot" aria-hidden="true"></span></div>
-            <p id="currentTime" class="metadata"></p>
+            <div class="live-row metadata"><span id="liveDot" class="live-dot" aria-hidden="true"></span><span id="currentTime"></span></div>
             <p id="currentNotice" class="notice" hidden></p>
             <div id="currentSummary" class="summary"></div>
             <div id="currentRoster" class="roster"></div>
             <details id="unknownTimes" class="unknown-times" hidden><summary>時間未定義的排班</summary><div id="unknownRoster"></div></details>
         </section>
         <section id="daily" aria-label="當日班表" hidden>
-            <div class="section-heading"><h2>當日班表</h2><button id="goToday" type="button" class="plain">今天</button></div>
-            <div class="date-row"><label for="rosterDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天">&larr;</button><input id="rosterDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天">&rarr;</button></div>
+            <div class="date-row"><label for="rosterDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天">&larr;</button><input id="rosterDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天">&rarr;</button><button id="goToday" type="button" class="plain">今天</button></div>
             <p id="dailyDateLabel" class="metadata"></p>
             <p id="dailyNotice" class="notice" hidden></p>
             <div id="dailySummary" class="summary"></div>
