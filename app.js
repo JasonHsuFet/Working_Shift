@@ -197,7 +197,12 @@
             section.append(heading);
             const people = textNode('div', '', 'roster-people');
             people.setAttribute('role', 'list');
-            for (const record of group.sort((left, right) => left.code.localeCompare(right.code) || employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
+            const tagOrder = record => [data.shifts[record.code].group, record.code === data.shifts[record.code].group ? 0 : 1];
+            for (const record of group.sort((left, right) => {
+                const [leftBase, leftVariant] = tagOrder(left);
+                const [rightBase, rightVariant] = tagOrder(right);
+                return leftBase.localeCompare(rightBase) || leftVariant - rightVariant || left.code.localeCompare(right.code) || employees.get(left.empId).name.localeCompare(employees.get(right.empId).name);
+            })) {
                 const person = employees.get(record.empId);
                 const row = textNode('div', '', `roster-item${record.empId === employee?.empId ? ' me' : ''}`);
                 row.setAttribute('role', 'listitem');
