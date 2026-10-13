@@ -1,6 +1,6 @@
 :root {
     --ink: #242727;
-    --muted: #677170;
+    --muted: #5f6968;
     --line: #dce3e1;
     --paper: #fff;
     --red: #c92e36;
@@ -11,9 +11,9 @@
     --shift-afternoon: #17713d;
     --shift-night: #245bb5;
     --page: #f4f6f5;
-    --input-border: #b8c5c0;
+    --input-border: #8a9692;
     --cell: #fafbfa;
-    --work-border: #c6e0d3;
+    --work-border: #4f9a80;
     --rest-bg: #eceeed;
     --rest-ink: #5c6563;
     --rest-border: #d3d8d6;
@@ -44,7 +44,7 @@
     --shift-night: #91baff;
     --input-border: #64776c;
     --cell: #292f2c;
-    --work-border: #426259;
+    --work-border: #5e8f7f;
     --rest-bg: #2f3432;
     --rest-ink: #b3beb8;
     --rest-border: #4a5450;
@@ -129,7 +129,7 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .day { border: 0; border-radius: 10px; background: transparent; padding: 10px 1px 0; display: flex; align-items: center; justify-content: center; min-width: 0; position: relative; }
 .day-number { position: absolute; top: 4px; left: 5px; padding: 1px 3px; border-radius: 4px; font-size: 11px; line-height: 1; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .day-code { font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
-.day.work .day-number, .day.rest .day-number { color: inherit; opacity: .75; }
+.day.work .day-number, .day.rest .day-number { color: inherit; }
 .day.work { background: var(--wash); color: var(--teal); }
 .day.rest { color: var(--rest-ink); background: var(--rest-bg); }
 .day.today .day-number { background: var(--ink); color: var(--paper); opacity: 1; font-weight: 700; }
