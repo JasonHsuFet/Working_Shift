@@ -180,7 +180,7 @@ function renderCalendar() {
     const today = schedule.taipeiDate();
     syncSelectedDate();
     element('employeeName').textContent = employee.name;
-    element('periodLabel').textContent = `${month.slice(0, 4)} 年 ${Number(month.slice(5))} 月`;
+    element('periodText').textContent = `${month.slice(0, 4)} 年 ${Number(month.slice(5))} 月`;
     const position = months.indexOf(month);
     element('prevPeriod').disabled = position <= 0;
     element('nextPeriod').disabled = position >= months.length - 1;
@@ -222,7 +222,8 @@ function renderWeek() {
     const today = schedule.taipeiDate();
     const years = [days[0].slice(0, 4), days[6].slice(0, 4)];
     element('employeeName').textContent = employee.name;
-    element('periodLabel').textContent = `${years[0]} 年 ${monthDay(days[0])} – ${years[1] !== years[0] ? `${years[1]} 年 ` : ''}${monthDay(days[6])}`;
+    // Year sits on its own small line so the range still fits beside the controls at 360px.
+    element('periodText').replaceChildren(textNode('small', `${years[0] === years[1] ? years[0] : years.join('–')} 年`, 'period-year'), `${monthDay(days[0])} – ${monthDay(days[6])}`);
     element('prevPeriod').disabled = days[0] <= data.range.start;
     element('nextPeriod').disabled = days[6] >= data.range.end;
     const list = element('weekList');
@@ -261,9 +262,9 @@ function renderPersonal() {
     element('nextPeriod').title = isWeek ? '下一週' : '下個月';
     element('prevPeriod').setAttribute('aria-label', element('prevPeriod').title);
     element('nextPeriod').setAttribute('aria-label', element('nextPeriod').title);
-    element('periodLabel').title = isWeek ? '回到本週' : '回到本月';
-    element('goCurrent').setAttribute('aria-label', isWeek ? '回到本週' : '回到本月');
-    element('goCurrent').disabled = !hasDate(schedule.taipeiDate());
+    // The picker chooses months, so it only belongs to the month view.
+    element('periodLabel').disabled = isWeek;
+    element('periodLabel').title = isWeek ? '' : '選擇年月';
     element('exportIcs').title = isWeek ? '匯出此週行事曆（.ics）' : '匯出此月行事曆（.ics）';
     if (isWeek) renderWeek();
     else renderCalendar();
@@ -336,6 +337,7 @@ function updateStatus() {
     status.className = `status${offline || outOfRange ? ' warn' : ''}`;
     status.textContent = offline ? '無法連線，目前顯示已儲存的班表' : outOfRange ? '今日不在班表涵蓋期間' : '已連線，班表已同步';
     element('liveDot').classList.toggle('warn', offline || outOfRange);
+    element('todayPeriod').disabled = outOfRange;
 }
 
 // Reloads when a newer schedule was published; otherwise just refreshes the connection status.
@@ -474,8 +476,44 @@ function goCurrent() {
     month = selectedDate.slice(0, 7);
     showPersonal();
 }
-element('periodLabel').addEventListener('click', goCurrent);
-element('goCurrent').addEventListener('click', goCurrent);
+// The period title opens a year/month picker.
+const picker = element('periodDialog');
+let pickerYear = '';
+function renderPicker() {
+    const years = months.map(item => item.slice(0, 4));
+    const now = schedule.taipeiDate().slice(0, 7);
+    element('pickerYear').textContent = `${pickerYear} 年`;
+    element('prevYear').disabled = pickerYear <= years[0];
+    element('nextYear').disabled = pickerYear >= years.at(-1);
+    element('monthGrid').replaceChildren(...Array.from({ length: 12 }, (_, index) => {
+        const value = `${pickerYear}-${String(index + 1).padStart(2, '0')}`;
+        const button = textNode('button', `${index + 1} 月`, value === now ? 'now' : '');
+        button.type = 'button';
+        button.disabled = !months.includes(value);
+        button.setAttribute('aria-pressed', String(value === month));
+        button.addEventListener('click', () => {
+            picker.close();
+            month = value;
+            selectedDate = schedule.taipeiDate().startsWith(value) ? schedule.taipeiDate() : `${value}-01`;
+            showPersonal();
+        });
+        return button;
+    }));
+}
+element('periodLabel').addEventListener('click', () => {
+    // Browsers without <dialog> keep the old tap-to-return behaviour.
+    if (!picker.showModal) return goCurrent();
+    pickerYear = month.slice(0, 4);
+    renderPicker();
+    picker.showModal();
+    picker.querySelector('[aria-pressed="true"]')?.focus();
+});
+for (const [id, delta] of [['prevYear', -1], ['nextYear', 1]]) {
+    element(id).addEventListener('click', () => { pickerYear = String(Number(pickerYear) + delta); renderPicker(); });
+}
+element('todayPeriod').addEventListener('click', goCurrent);
+element('pickerClose').addEventListener('click', () => picker.close());
+picker.addEventListener('click', event => { if (event.target === picker) picker.close(); });
 element('exportIcs').addEventListener('click', exportIcs);
 element('onDutyDate').addEventListener('change', () => renderOnDuty());
 element('goToday').addEventListener('click', () => { element('onDutyDate').value = schedule.taipeiDate(); setFilter('now'); renderOnDuty(); });

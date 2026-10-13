@@ -90,57 +90,71 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .input-row input { width: 100%; flex: 1; }
 .primary { border: 1px solid var(--primary-bg); background: var(--primary-bg); color: white; padding: 8px 18px; font-weight: 700; min-height: 40px; white-space: nowrap; }
 .field-error { color: var(--red); margin-top: 6px; font-size: 13px; }
-.person-card { display: grid; gap: 4px; margin: 6px 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--wash); }
-.person-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.person-card { display: grid; gap: 4px; margin-top: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--cell); }
+.person-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .person-heading h2 { font-size: 17px; min-width: 0; overflow-wrap: anywhere; }
 .info-row { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 34px; }
 .info-label { flex: 0 0 3.5em; color: var(--muted); font-size: 12px; }
 .plain { padding: 4px 10px; background: var(--cell); border: 1px solid var(--line); color: var(--teal); min-height: 40px; font-size: 13px; white-space: nowrap; }
 .person-actions { display: flex; gap: 6px; }
-.view-toggle { display: inline-flex; border: 1px solid var(--input-border); border-radius: 6px; overflow: hidden; }
-.view-toggle button { border: 0; border-radius: 0; background: transparent; min-height: 36px; padding: 2px 12px; font-size: 13px; }
-.view-toggle button[aria-pressed="true"] { background: var(--primary-bg); color: #fff; font-weight: 700; }
-.month-nav { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
-.nav-title { flex: 1; min-width: 0; text-align: center; }
-.month-title-row { display: flex; justify-content: center; align-items: center; gap: 4px; }
-.period-label { border: 0; background: none; padding: 0; font-size: 15px; font-weight: 700; }
-.today-button { min-width: 28px; min-height: 28px; padding: 0 5px; border: 1px solid var(--line); background: var(--cell); color: var(--teal); font-size: 12px; font-weight: 700; }
+.view-toggle { display: inline-flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--rest-bg); }
+.view-toggle button { border: 0; border-radius: 6px; background: transparent; color: var(--muted); min-height: 30px; padding: 0 12px; font-size: 13px; }
+.view-toggle button[aria-pressed="true"] { background: var(--paper); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / .15); }
+.calendar-panel { padding-top: 12px; }
+.month-nav .icon-button { border: 0; border-radius: 50%; background: transparent; }
+.month-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px; margin-bottom: 8px; }
+.period-label { justify-self: start; width: 136px; max-width: 100%; display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 6px; border: 0; border-radius: 8px; background: none; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.period-label span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; line-height: 1.2; }
+.period-year { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+.period-label .icon { width: 16px; height: 16px; color: var(--muted); }
+.period-label:not(:disabled):hover { background: var(--cell); }
+.period-label:disabled { opacity: 1; }
+.period-label:disabled .icon { display: none; }
+.today-button { justify-self: start; min-height: 32px; padding: 0 12px; border: 1px solid var(--input-border); border-radius: 8px; background: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.today-button:hover { background: var(--cell); }
+.picker-year { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.picker-year h2 { font-size: 17px; font-variant-numeric: tabular-nums; }
+.picker-year .icon-button { border: 0; border-radius: 50%; background: transparent; }
+.month-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.month-grid button { min-height: 44px; border: 0; border-radius: 8px; background: var(--cell); font-size: 14px; font-variant-numeric: tabular-nums; }
+.month-grid button.now { color: var(--teal); font-weight: 700; box-shadow: inset 0 0 0 1px var(--work-border); }
+.month-grid button[aria-pressed="true"] { background: var(--primary-bg); color: #fff; font-weight: 700; box-shadow: none; }
 .icon { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .icon-button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--line); background: var(--paper); flex-shrink: 0; }
 .summary { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 6px 0 10px; color: var(--muted); font-size: 13px; }
 .summary strong { color: var(--ink); font-size: 18px; margin-right: 4px; font-variant-numeric: tabular-nums; }
-.weekdays, .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
-.weekdays { font-size: 12px; text-align: center; color: var(--muted); margin: 6px 0 2px; }
-.calendar { grid-auto-rows: 44px; gap: 3px; }
-.day { border: 1px solid var(--line); background: var(--cell); padding: 8px 1px 0; display: flex; align-items: center; justify-content: center; min-width: 0; position: relative; }
-.day-number { position: absolute; top: 2px; left: 3px; padding: 1px 2px; border-radius: 3px; font-size: 12px; line-height: 1; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
-.day-code { font-size: 14px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+.weekdays, .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.weekdays { font-size: 11px; text-align: center; color: var(--muted); margin-bottom: 4px; }
+.calendar { grid-auto-rows: 48px; }
+.day { border: 0; border-radius: 10px; background: transparent; padding: 10px 1px 0; display: flex; align-items: center; justify-content: center; min-width: 0; position: relative; }
+.day-number { position: absolute; top: 4px; left: 5px; padding: 1px 3px; border-radius: 4px; font-size: 11px; line-height: 1; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.day-code { font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
 .day.work .day-number, .day.rest .day-number { color: inherit; opacity: .75; }
-.day.work { background: var(--paper); color: var(--teal); border-color: var(--input-border); }
-.day.rest { color: var(--rest-ink); background: var(--rest-bg); border-color: var(--rest-border); }
+.day.work { background: var(--wash); color: var(--teal); }
+.day.rest { color: var(--rest-ink); background: var(--rest-bg); }
 .day.today .day-number { background: var(--ink); color: var(--paper); opacity: 1; font-weight: 700; }
-.day.selected { outline: 2px solid var(--teal); outline-offset: -2px; }
+.day.selected { box-shadow: inset 0 0 0 2px var(--teal); }
+.week-row.selected { box-shadow: inset 0 0 0 2px var(--teal); }
 .week-list { display: grid; gap: 4px; }
-.week-row { display: grid; grid-template-columns: 56px 34px minmax(0, 1fr); align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--cell); text-align: left; }
-.week-row.selected { outline: 2px solid var(--teal); outline-offset: -2px; }
-.week-row.work { background: var(--paper); border-color: var(--input-border); }
-.week-row.rest { background: var(--rest-bg); border-color: var(--rest-border); color: var(--rest-ink); }
-.week-row.today { box-shadow: inset 4px 0 0 var(--ink); }
+.week-row { display: grid; grid-template-columns: 56px 34px minmax(0, 1fr); align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 10px; border: 0; border-radius: 10px; background: transparent; text-align: left; }
+.week-row.work { background: var(--wash); }
+.week-row.rest { background: var(--rest-bg); color: var(--rest-ink); }
+.week-row.today .week-day strong { color: var(--teal); }
 .week-day strong { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
 .week-day small { display: block; font-size: 11px; color: var(--muted); }
 .week-row.rest .week-day small, .week-row.rest .shift-text small { color: var(--rest-ink); }
-.week-row .shift-code { font-size: 14px; }
+.week-row .shift-code { font-size: 14px; background: var(--paper); border-color: transparent; }
 .week-row.rest .shift-code { background: transparent; color: var(--rest-ink); }
-.person-stats { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.person-stats { margin-top: 10px; padding: 0 4px; }
 .stat-counts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; font-size: 13px; }
 .stat-counts em { font-style: normal; font-size: 11px; color: var(--muted); }
 .stat-counts b { font-weight: 700; }
 .stat-counts strong { margin-left: 4px; font-variant-numeric: tabular-nums; }
 .stat-line { margin-top: 4px; font-size: 12px; color: var(--muted); }
-.colleagues { display: grid; gap: 4px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.colleagues { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
 .colleagues h3 { font-size: 12px; font-weight: 400; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.chips span { padding: 2px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--cell); font-size: 12px; }
+.chips span { padding: 2px 10px; border-radius: 12px; background: var(--wash); font-size: 12px; }
 #personalSchedule, #on-duty { touch-action: pan-y pinch-zoom; }
 .day-detail { min-width: 0; display: grid; gap: 4px; }
 .day-detail h3 { font-size: 14px; }
@@ -202,7 +216,7 @@ dialog input { width: 100%; margin-top: 14px; }
     /* Auto margins in a flex column disable stretching, so set the width explicitly. */
     .masthead, main { width: 100%; }
     main { flex: 1; display: flex; flex-direction: column; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
-    #personal:not([hidden]), #personalSchedule:not([hidden]) { flex: 1; display: flex; flex-direction: column; }
+    #personal:not([hidden]), #personalSchedule:not([hidden]), .calendar-panel { flex: 1; display: flex; flex-direction: column; }
     .calendar:not([hidden]) { flex: 1; grid-auto-rows: minmax(40px, 1fr); }
     #weekList:not([hidden]) { flex: 1; grid-auto-rows: minmax(46px, 1fr); }
 }
