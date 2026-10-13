@@ -27,12 +27,8 @@
 <body>
     <header class="masthead">
         <div class="header-bar">
-            <div class="brand"><img src="./assets/icon.svg" width="32" height="32" alt=""><h1>值班班表</h1></div>
-            <label class="theme-switch" for="darkTheme"><span>深色</span><input id="darkTheme" type="checkbox" role="switch" aria-label="深色版型"></label>
-        </div>
-        <div class="meta-row">
-            <p id="coverage" class="metadata">資料載入中</p>
-            <p id="dataStatus" class="status" role="status" hidden></p>
+            <div class="brand"><img src="./assets/icon.svg" width="32" height="32" alt=""><h1>值班班表</h1><p id="dataStatus" class="status" role="status" hidden></p></div>
+            <label class="theme-switch" for="darkTheme"><span aria-hidden="true">&#9790;</span><input id="darkTheme" type="checkbox" role="switch" aria-label="深色版型"></label>
         </div>
     </header>
     <main>
@@ -53,19 +49,13 @@
                 <div class="person-heading">
                     <h2 id="employeeName"></h2>
                     <section id="dayDetail" class="day-detail" aria-label="日期班別明細"><h3 id="selectedDate"></h3><div id="selectedShift"></div></section>
-                    <button id="clearEmployee" type="button" class="plain">清除工號</button>
+                    <div class="person-actions"><button id="exportIcs" type="button" class="plain">匯出 ICS</button><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
                 </div>
                 <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
-                <div class="view-bar">
-                    <div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div>
-                    <button id="goCurrent" type="button" class="plain">本月</button>
-                    <button id="exportIcs" type="button" class="plain" title="下載目前顯示的月份或週的行事曆檔（.ics）">匯出此月 ICS</button>
-                </div>
-                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><h3 id="monthLabel"></h3><div id="monthSummary" class="summary"></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button></div>
+                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><button id="monthLabel" type="button" class="month-label"></button><div id="monthSummary" class="summary"></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
                 <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                 <div id="calendar" class="calendar" aria-label="個人月曆"></div>
                 <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
-                <div class="legend"><span><i class="work-dot"></i>出勤</span><span><i class="rest-dot"></i>休假</span><span><i class="today-dot"></i>今日</span></div>
                 <div class="person-stats"><div id="statCounts" class="stat-counts"></div><p id="statStreak" class="stat-line"></p></div>
             </div>
         </section>
@@ -86,7 +76,7 @@
             <div id="dailyRoster" class="roster"></div>
         </section>
     </main>
-    <footer><p id="updatedAt"></p><p>Asia/Taipei · 以發布班表為準</p></footer>
+    <footer><p id="coverage">資料載入中</p><p id="updatedAt"></p><p>Asia/Taipei · 以發布班表為準</p></footer>
     <datalist id="empList"></datalist>
     <dialog id="empDialog" aria-labelledby="empDialogTitle">
         <form id="empDialogForm" method="dialog" novalidate>

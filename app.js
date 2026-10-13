@@ -316,9 +316,8 @@
         element('nextMonth').title = isWeek ? '下一週' : '下個月';
         element('previousMonth').setAttribute('aria-label', element('previousMonth').title);
         element('nextMonth').setAttribute('aria-label', element('nextMonth').title);
-        element('goCurrent').textContent = isWeek ? '本週' : '本月';
-        element('exportIcs').textContent = isWeek ? '匯出此週 ICS' : '匯出此月 ICS';
-        element('goCurrent').disabled = !hasDate(core.taipeiDate());
+        element('monthLabel').title = isWeek ? '回到本週' : '回到本月';
+        element('exportIcs').title = isWeek ? '匯出此週行事曆（.ics）' : '匯出此月行事曆（.ics）';
         if (isWeek) renderWeek();
         else renderCalendar();
     }
@@ -524,7 +523,8 @@
             showPersonal();
         });
     });
-    element('goCurrent').addEventListener('click', () => {
+    element('monthLabel').addEventListener('click', () => {
+        if (!hasDate(core.taipeiDate())) return;
         selectedDate = core.taipeiDate();
         month = selectedDate.slice(0, 7);
         showPersonal();
