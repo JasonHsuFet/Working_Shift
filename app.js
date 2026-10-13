@@ -199,12 +199,11 @@
             people.setAttribute('role', 'list');
             for (const record of group.sort((left, right) => left.code.localeCompare(right.code) || employees.get(left.empId).name.localeCompare(employees.get(right.empId).name))) {
                 const person = employees.get(record.empId);
-                const personShift = data.shifts[record.code];
                 const row = textNode('div', '', `roster-item${record.empId === employee?.empId ? ' me' : ''}`);
                 row.setAttribute('role', 'listitem');
                 const name = textNode('strong', person.name);
                 name.append(textNode('small', person.empId));
-                row.append(name, textNode('span', personShift.rest ? personShift.label : record.code, 'roster-tag'));
+                row.append(name, textNode('span', record.code, 'roster-tag'));
                 people.append(row);
             }
             section.append(people);
