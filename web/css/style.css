@@ -23,7 +23,8 @@
     --error-bg: #fff0f0;
     --error-ink: #94252d;
     color-scheme: light;
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    /* 系統字，不下載網頁字型；拉丁字型在前，避免英數被中文字型的拉丁字符取代 */
+    font-family: -apple-system, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: var(--ink);
     background: var(--page);
     letter-spacing: 0;
@@ -105,12 +106,12 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .month-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px; margin-bottom: 8px; }
 .period-label { justify-self: start; width: 136px; max-width: 100%; display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 6px; border: 0; border-radius: 8px; background: none; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .period-label span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; line-height: 1.2; }
-.period-year { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+.period-year { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .period-label .icon { width: 16px; height: 16px; color: var(--muted); }
 .period-label:not(:disabled):hover { background: var(--cell); }
 .period-label:disabled { opacity: 1; }
 .period-label:disabled .icon { display: none; }
-.today-button { justify-self: start; min-height: 32px; padding: 0 12px; border: 1px solid var(--input-border); border-radius: 8px; background: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.today-button { justify-self: start; min-height: 32px; padding: 0 12px; border: 1px solid var(--input-border); border-radius: 8px; background: none; font-size: 14px; font-weight: 700; white-space: nowrap; }
 .today-button:hover { background: var(--cell); }
 .picker-year { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .picker-year h2 { font-size: 17px; font-variant-numeric: tabular-nums; }
@@ -127,7 +128,7 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .weekdays { font-size: 11px; text-align: center; color: var(--muted); margin-bottom: 4px; }
 .calendar { grid-auto-rows: 48px; }
 .day { border: 0; border-radius: 10px; background: transparent; padding: 10px 1px 0; display: flex; align-items: center; justify-content: center; min-width: 0; position: relative; }
-.day-number { position: absolute; top: 4px; left: 5px; padding: 1px 3px; border-radius: 4px; font-size: 11px; line-height: 1; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.day-number { position: absolute; top: 4px; left: 5px; padding: 1px 3px; border-radius: 4px; font-size: 11px; line-height: 1; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
 .day-code { font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
 .day.work .day-number, .day.rest .day-number { color: inherit; }
 .day.work { background: var(--wash); color: var(--teal); }
@@ -191,7 +192,7 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--teal); }
 .roster-item { display: flex; align-items: center; min-width: 0; min-height: 46px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--cell); }
 .roster-item { justify-content: space-between; gap: 6px; }
 .roster-tag { flex-shrink: 0; padding: 1px 6px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); font-size: 11px; }
-.roster-item strong { display: block; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; min-width: 0; }.roster-item small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.roster-item strong { display: block; font-size: 12px; font-weight: 400; overflow-wrap: anywhere; min-width: 0; }.roster-item small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .empty { padding: 18px 12px; text-align: center; color: var(--muted); background: var(--empty-bg); border-bottom: 1px solid var(--line); font-size: 14px; }
 .unknown-times { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }.unknown-times summary { cursor: pointer; min-height: 36px; }
 footer { display: flex; flex-wrap: wrap; gap: 0 12px; padding: 8px 16px max(10px, env(safe-area-inset-bottom)); color: var(--muted); font-size: 11px; }
