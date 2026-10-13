@@ -106,13 +106,6 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .month-title-row { display: flex; justify-content: center; align-items: center; gap: 4px; }
 .month-label { border: 0; background: none; padding: 0; font-size: 15px; font-weight: 700; }
 .today-button { min-width: 28px; min-height: 28px; padding: 0 5px; border: 1px solid var(--line); background: var(--cell); color: var(--teal); font-size: 12px; font-weight: 700; }
-.nav-title .summary { margin: 0; justify-content: center; flex-wrap: nowrap; gap: 0 6px; font-size: 11px; white-space: nowrap; }
-.nav-title .summary strong { font-size: 12px; margin-right: 2px; }
-.legend-work, .legend-rest { display: inline-flex; align-items: center; gap: 3px; }
-.legend-work::before, .legend-rest::before { content: ""; width: 7px; height: 7px; border: 1px solid var(--input-border); }
-.legend-rest::before { background: var(--rest-bg); border-color: var(--rest-border); }
-.legend-today { display: inline-flex; align-items: center; gap: 3px; }
-.legend-today::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--ink); }
 .icon-button { width: 36px; height: 36px; border: 1px solid var(--line); background: var(--paper); font-size: 18px; flex-shrink: 0; }
 .summary { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 6px 0 10px; color: var(--muted); font-size: 13px; }
 .summary strong { color: var(--ink); font-size: 18px; margin-right: 4px; font-variant-numeric: tabular-nums; }
@@ -143,7 +136,6 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .stat-counts em { font-style: normal; font-size: 11px; color: var(--muted); }
 .stat-counts b { font-weight: 700; }
 .stat-counts strong { margin-left: 4px; font-variant-numeric: tabular-nums; }
-.stat-line { margin-top: 4px; font-size: 12px; color: var(--muted); }
 .colleagues { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 2px 0 8px; }
 .colleagues h3 { font-size: 12px; font-weight: 400; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }

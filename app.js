@@ -13,7 +13,6 @@
     const core = window.ScheduleCore;
     const main = document.querySelector('main');
     main.setAttribute('aria-busy', 'true');
-    element('coverage').textContent = '正在讀取班表…';
     element('empId').disabled = true;
     element('employeeForm').querySelector('button').disabled = true;
     document.querySelectorAll('[data-tab]').forEach(button => { button.disabled = true; });
@@ -88,7 +87,6 @@
     } catch (error) {
         element('fatal').hidden = false;
         element('fatal').textContent = `班表載入失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}。請重新整理再試一次。`;
-        element('coverage').textContent = '資料無法載入';
         element('employeeForm').hidden = true;
         main.setAttribute('aria-busy', 'false');
         return;
@@ -141,14 +139,12 @@
 
     const hasDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date) && months.includes(date.slice(0, 7));
 
-    function summary(id, entries, showToday = false) {
-        const items = entries.map(([label, count]) => {
-            const node = textNode('span', '', label === '出勤' ? 'legend-work' : label === '休假' ? 'legend-rest' : '');
+    function summary(id, entries) {
+        element(id).replaceChildren(...entries.map(([label, count]) => {
+            const node = textNode('span', '');
             node.append(textNode('strong', String(count)), document.createTextNode(label));
             return node;
-        });
-        if (showToday) items.push(textNode('span', '今日', 'legend-today'));
-        element(id).replaceChildren(...items);
+        }));
     }
 
     function timeLabel(shift) {
@@ -237,8 +233,6 @@
         const position = months.indexOf(month);
         element('previousMonth').disabled = position <= 0;
         element('nextMonth').disabled = position >= months.length - 1;
-        const restCount = records.filter(record => data.shifts[record.code].rest).length;
-        summary('monthSummary', [['出勤', records.length - restCount], ['休假', restCount]], true);
         const calendar = element('calendar');
         calendar.replaceChildren();
         const firstDay = new Date(`${month}-01T00:00:00Z`);
@@ -280,8 +274,6 @@
         element('monthLabel').textContent = `${years[0]} 年 ${monthDay(days[0])} – ${years[1] !== years[0] ? `${years[1]} 年 ` : ''}${monthDay(days[6])}`;
         element('previousMonth').disabled = days[0] <= data.range.start;
         element('nextMonth').disabled = days[6] >= data.range.end;
-        const restCount = [...byDate.values()].filter(record => data.shifts[record.code].rest).length;
-        summary('monthSummary', [['出勤', byDate.size - restCount], ['休假', restCount]], true);
         const list = element('weekList');
         list.replaceChildren();
         for (const date of days) {
@@ -335,7 +327,7 @@
         renderPersonal();
     }
 
-    // Counts for the shown range, plus streak / next rest day / same-shift colleagues relative to the selected day.
+    // Counts for the shown range and same-shift colleagues relative to the selected day.
     function renderInsights(from, to, scope) {
         const mine = data.records.filter(record => record.empId === employee.empId);
         const counts = core.categoryCounts(mine.filter(record => record.date >= from && record.date <= to), data.shifts);
@@ -344,14 +336,6 @@
             item.append(textNode('b', label[0], core.shiftClass({ color: id })), textNode('strong', String(counts[id])));
             return item;
         }));
-        const byDate = core.shiftsByDate(mine, data.shifts);
-        const streak = core.workStreak(byDate, selectedDate);
-        const nextRest = core.nextRestDay(byDate, selectedDate);
-        const parts = [];
-        if (streak) parts.push(`至 ${monthDay(selectedDate)} 已連續上班 ${streak} 天`);
-        else if (byDate.get(selectedDate)?.rest) parts.push(`${monthDay(selectedDate)} 休假`);
-        if (nextRest) parts.push(`下個休假日 ${monthDay(nextRest)}（${Math.round((Date.parse(`${nextRest}T00:00:00Z`) - Date.parse(`${selectedDate}T00:00:00Z`)) / 86400000)} 天後）`);
-        element('statStreak').textContent = parts.join(' · ');
         const record = mine.find(item => item.date === selectedDate);
         const shift = record && data.shifts[record.code];
         element('colleagues').hidden = !shift || shift.rest;
@@ -491,10 +475,6 @@
         filterBar.append(button);
     }
 
-    element('coverage').textContent = `${data.range.start.replaceAll('-', '/')} — ${data.range.end.replaceAll('-', '/')} · ${employees.size} 人`;
-    element('updatedAt').textContent = data.sourceUpdatedAt
-        ? `班表資料產生時間：${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.sourceUpdatedAt))}`
-        : '網站未提供資料產生時間';
     updateStatus();
     element('rosterDate').value = core.taipeiDate();
     element('employeeForm').addEventListener('submit', event => { event.preventDefault(); selectEmployee(element('empId').value); });

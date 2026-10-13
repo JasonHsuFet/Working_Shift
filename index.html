@@ -52,11 +52,11 @@
                     <div class="person-actions"><button id="exportIcs" type="button" class="plain">匯出 ICS</button><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
                 </div>
                 <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
-                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><div class="month-title-row"><button id="monthLabel" type="button" class="month-label"></button><button id="goCurrent" type="button" class="today-button" aria-label="回到本月">今</button></div><div id="monthSummary" class="summary"></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
+                <div class="month-nav"><button id="previousMonth" type="button" class="icon-button" aria-label="上個月" title="上個月">&larr;</button><div class="nav-title"><div class="month-title-row"><button id="monthLabel" type="button" class="month-label"></button><button id="goCurrent" type="button" class="today-button" aria-label="回到本月">今</button></div></div><button id="nextMonth" type="button" class="icon-button" aria-label="下個月" title="下個月">&rarr;</button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
                 <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                 <div id="calendar" class="calendar" aria-label="個人月曆"></div>
                 <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
-                <div class="person-stats"><div id="statCounts" class="stat-counts"></div><p id="statStreak" class="stat-line"></p></div>
+                <div class="person-stats"><div id="statCounts" class="stat-counts"></div></div>
             </div>
         </section>
         <section id="current" aria-label="當前班表" hidden>
@@ -76,7 +76,6 @@
             <div id="dailyRoster" class="roster"></div>
         </section>
     </main>
-    <footer><p id="coverage">資料載入中</p><p id="updatedAt"></p><p>Asia/Taipei · 以發布班表為準</p></footer>
     <datalist id="empList"></datalist>
     <dialog id="empDialog" aria-labelledby="empDialogTitle">
         <form id="empDialogForm" method="dialog" novalidate>
