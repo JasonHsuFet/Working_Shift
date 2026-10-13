@@ -85,7 +85,7 @@ h3 { font-size: 17px; }
 /* Healthy status shows only the dot; warnings keep their text visible. */
 .status:not(.warn) { font-size: 0; }
 main { background: var(--paper); padding: 0 16px 8px; }
-.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--line); margin-bottom: 10px; background: var(--paper); }
+.tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--line); margin-bottom: 10px; background: var(--paper); }
 .tabs button { border: 0; border-radius: 0; background: transparent; padding: 8px 2px; min-height: 42px; font-size: 14px; border-bottom: 3px solid transparent; }
 .tabs button[aria-current] { color: var(--red); font-weight: 700; border-bottom-color: var(--red); }
 .employee-form > label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
@@ -162,7 +162,7 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .error { border-color: var(--red); background: var(--error-bg); color: var(--error-ink); }
 .date-row { display: flex; gap: 10px; align-items: center; margin: 4px 0 10px; font-size: 13px; }
 .date-row input { flex: 1; width: 100%; }
-.filter-bar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; border-top: 1px solid var(--line); padding-top: 8px; margin-bottom: 10px; }
+.filter-bar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; border-top: 1px solid var(--line); padding-top: 8px; margin-bottom: 10px; }
 .filter-bar button { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 36px; padding: 2px; border: 1px solid var(--input-border); background: var(--paper); font-size: 14px; }
 .filter-bar svg { flex-shrink: 0; }
 .filter-bar [data-cat="morning"] svg { color: var(--shift-morning); }

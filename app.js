@@ -426,27 +426,6 @@
         showPersonal();
     }
 
-    let currentRun = 0;
-    async function renderCurrent() {
-        const run = ++currentRun;
-        const now = new Date();
-        const today = core.taipeiDate(now);
-        if (hasDate(today)) await ensure([today.slice(0, 7)]);
-        if (run !== currentRun) return;
-        element('currentTime').textContent = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'medium', timeStyle: 'short' }).format(now);
-        const records = core.currentRecords(data, now);
-        const inRange = hasDate(today);
-        const unknown = core.dayRecords(data, today).filter(record => {
-            const shift = data.shifts[record.code];
-            return !shift.rest && (!shift.start || !shift.end);
-        });
-        notice('currentNotice', !inRange ? '今日不在已發布資料期間，無法提供完整的當前班表。' : unknown.length ? '部分班別時間未定義；以下僅列已知時段的值班人員。' : '');
-        summary('currentSummary', [['已知時段值班', records.length], ['時間未定義', unknown.length]]);
-        renderRoster('currentRoster', records, inRange ? '此刻沒有已知時段的值班人員' : '今日班表尚未發布');
-        element('unknownTimes').hidden = !unknown.length;
-        renderRoster('unknownRoster', unknown, '');
-    }
-
     let dailyRun = 0;
     async function renderDaily() {
         const date = element('rosterDate').value;
@@ -456,18 +435,38 @@
         const run = ++dailyRun;
         if (hasDate(date)) await ensure([date.slice(0, 7)]);
         if (run !== dailyRun) return;
-        element('dailyDateLabel').textContent = validDate ? dateLabel(date) : '';
+        const now = new Date();
+        // The 'now' filter only makes sense for today's published date.
+        const live = hasDate(date) && date === core.taipeiDate(now);
+        filterBar.querySelector('[data-cat="now"]').disabled = !live;
+        if (!live && rosterFilter === 'now') setFilter('');
+        element('dailyDateLabel').textContent = !validDate ? '' : live ? `${dateLabel(date)} ${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', timeStyle: 'short' }).format(now)}` : dateLabel(date);
         const records = core.dayRecords(data, date);
-        const restCount = records.filter(record => data.shifts[record.code].rest).length;
-        summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
-        notice('dailyNotice', hasDate(date) ? '' : '此日期不在已發布資料期間。');
-        const visible = records.filter(record => !rosterFilter || core.shiftCategory(data.shifts[record.code]) === rosterFilter);
-        renderRoster('dailyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
+        const onNow = rosterFilter === 'now';
+        const unknown = onNow ? records.filter(record => {
+            const shift = data.shifts[record.code];
+            return !shift.rest && (!shift.start || !shift.end);
+        }) : [];
+        if (onNow) {
+            const current = core.currentRecords(data, now);
+            summary('dailySummary', [['值班中', current.length], ...(unknown.length ? [['時間未定義', unknown.length]] : [])]);
+            notice('dailyNotice', unknown.length ? '部分班別時間未定義；以下僅列已知時段的值班人員。' : '');
+            renderRoster('dailyRoster', current, '此刻沒有已知時段的值班人員');
+        } else {
+            const restCount = records.filter(record => data.shifts[record.code].rest).length;
+            summary('dailySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
+            notice('dailyNotice', hasDate(date) ? '' : '此日期不在已發布資料期間。');
+            const visible = records.filter(record => !rosterFilter || core.shiftCategory(data.shifts[record.code]) === rosterFilter);
+            renderRoster('dailyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
+        }
+        element('unknownTimes').hidden = !unknown.length;
+        renderRoster('unknownRoster', unknown, '');
     }
 
-    let rosterFilter = '';
+    let rosterFilter = 'now';
     const filterIcons = {
         all: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+        now: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
         morning: '<path d="M12 2v8M4.93 10.93l1.41 1.41M2 18h2M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M8 6l4-4 4 4M16 18a4 4 0 0 0-8 0"/>',
         afternoon: '<path d="M12 10V2M4.93 10.93l1.41 1.41M2 18h2M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M16 6l-4 4-4-4M16 18a4 4 0 0 0-8 0"/>',
         night: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
@@ -475,7 +474,11 @@
         rest: '<path d="M10 2v2M14 2v2M6 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>'
     };
     const filterBar = element('shiftFilter');
-    for (const [id, label] of [['', '全部班別'], ...core.shiftCategories]) {
+    function setFilter(id) {
+        rosterFilter = id;
+        filterBar.querySelectorAll('button').forEach(item => item.setAttribute('aria-pressed', String((item.dataset.cat === 'all' ? '' : item.dataset.cat) === id)));
+    }
+    for (const [id, label, short] of [['now', '目前值班', '現'], ['', '全部班別', '全'], ...core.shiftCategories.map(([id, label]) => [id, label, label[0]])]) {
         const button = textNode('button', '', '');
         button.type = 'button';
         button.dataset.cat = id || 'all';
@@ -483,10 +486,9 @@
         button.setAttribute('aria-label', label);
         button.setAttribute('aria-pressed', String(id === rosterFilter));
         button.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${filterIcons[id || 'all']}</svg>`;
-        button.append(textNode('span', id ? label[0] : '全'));
+        button.append(textNode('span', short));
         button.addEventListener('click', () => {
-            rosterFilter = id;
-            filterBar.querySelectorAll('button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+            setFilter(id);
             renderDaily();
         });
         filterBar.append(button);
@@ -536,17 +538,16 @@
     document.querySelectorAll('[data-tab]').forEach(button => {
         button.addEventListener('click', () => {
             activeTab = button.dataset.tab;
-            for (const id of ['personal', 'current', 'daily']) element(id).hidden = id !== activeTab;
+            for (const id of ['personal', 'daily']) element(id).hidden = id !== activeTab;
             document.querySelectorAll('[data-tab]').forEach(tab => {
                 if (tab === button) tab.setAttribute('aria-current', 'page');
                 else tab.removeAttribute('aria-current');
             });
-            if (activeTab === 'current') renderCurrent();
             if (activeTab === 'daily') renderDaily();
         });
     });
     element('rosterDate').addEventListener('change', () => renderDaily());
-    element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); renderDaily(); });
+    element('goToday').addEventListener('click', () => { element('rosterDate').value = core.taipeiDate(); setFilter('now'); renderDaily(); });
     for (const [id, delta] of [['prevDay', -1], ['nextDay', 1]]) {
         element(id).addEventListener('click', () => {
             if (!element('rosterDate').value) return;
@@ -610,12 +611,14 @@
         askEmployee();
     }
 
-    setInterval(() => { if (activeTab === 'current') renderCurrent(); }, 30000);
+    // Only today's view shows a live clock and the 'now' roster, so only it needs the periodic refresh.
+    const refreshLive = () => { if (activeTab === 'daily' && element('rosterDate').value === core.taipeiDate()) renderDaily(); };
+    setInterval(refreshLive, 30000);
     window.addEventListener('online', checkPublished);
     window.addEventListener('offline', updateStatus);
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) return;
-        if (activeTab === 'current') renderCurrent();
+        refreshLive();
         // An installed app resumes without reloading, so pick up a newly published schedule here.
         checkPublished();
     });
