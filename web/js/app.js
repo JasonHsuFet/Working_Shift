@@ -195,9 +195,9 @@ function renderCalendar() {
         const date = `${month}-${String(day).padStart(2, '0')}`;
         const record = byDate.get(date);
         const shift = record && data.shifts[record.code];
-        const button = textNode('button', '', `day${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}`);
+        const button = textNode('button', '', `day${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}${record?.leader ? ' leader' : ''}`);
         button.type = 'button';
-        button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${shift.label}` : '無資料'}`);
+        button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${shift.label}${record.leader ? '，leader' : ''}` : '無資料'}`);
         button.setAttribute('aria-pressed', String(date === selectedDate));
         button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', `day-code ${schedule.shiftClass(shift)}`));
         button.addEventListener('click', () => { selectedDate = date; renderPersonal(); element('calendar').querySelector(`[aria-pressed="true"]`).focus({ preventScroll: true }); });
