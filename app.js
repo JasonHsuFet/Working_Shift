@@ -206,7 +206,7 @@
                 const person = employees.get(record.empId);
                 const row = textNode('div', '', `roster-item${record.empId === employee?.empId ? ' me' : ''}`);
                 row.setAttribute('role', 'listitem');
-                const name = textNode('strong', person.name);
+                const name = textNode('strong', person.name, record.leader ? 'leader' : '');
                 name.append(textNode('small', person.empId));
                 row.append(name, textNode('span', record.code, 'roster-tag'));
                 people.append(row);
@@ -221,6 +221,7 @@
         const container = element('selectedShift');
         container.replaceChildren();
         const record = data.records.find(item => item.empId === employee.empId && item.date === selectedDate);
+        element('employeeName').classList.toggle('leader', Boolean(record?.leader));
         if (!record) {
             container.append(textNode('p', '此日期沒有排班資料', 'empty'));
             return;
@@ -353,10 +354,10 @@
         element('colleagues').hidden = !shift || shift.rest;
         if (element('colleagues').hidden) return;
         const others = data.records.filter(item => item.date === selectedDate && data.shifts[item.code].group === shift.group && item.empId !== employee.empId)
-            .map(item => employees.get(item.empId)).sort((left, right) => left.name.localeCompare(right.name));
+            .map(item => ({ ...employees.get(item.empId), leader: item.leader })).sort((left, right) => left.name.localeCompare(right.name));
         element('colleaguesTitle').textContent = others.length ? `同班同事 ${others.length} 人` : '當天沒有其他同班同事';
         element('colleaguesList').replaceChildren(...others.map(person => {
-            const chip = textNode('span', person.name);
+            const chip = textNode('span', person.name, person.leader ? 'leader' : '');
             chip.title = person.empId;
             return chip;
         }));
