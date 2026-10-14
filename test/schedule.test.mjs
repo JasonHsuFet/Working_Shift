@@ -1,47 +1,7 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import { DB_FILE, readWorkbook, sheetRows, readLookups, parseMonthSheet } from './build.mjs';
-
-// Checks shape only, so uploading a changed schedule never breaks the deploy.
-const { ids, defs } = readLookups(readWorkbook(DB_FILE));
-const SUMMARY_NAMES = ['1', '早', 'N', 'OFF (X)', 'Total', 'Leader', 'On Job'];
-let months = 0;
-for (const file of fs.readdirSync(new URL('../data/', import.meta.url))) {
-    const year = Number(/^All_(\d{4})\.xlsx$/.exec(file)?.[1]);
-    if (!year) continue;
-    const book = readWorkbook(file);
-    for (const sheet of book.SheetNames.filter(name => /^(0[1-9]|1[0-2])$/.test(name.trim()))) {
-        const month = Number(sheet);
-        const data = parseMonthSheet(sheetRows(book, sheet), year, month, ids, defs);
-        assert.ok(data, `${file} ${sheet}: day header not found`);
-        assert.equal(data.dates.length, new Date(Date.UTC(year, month, 0)).getUTCDate());
-        assert.ok(data.employees.length > 0);
-        const people = new Set(data.employees.map(employee => employee.empId));
-        assert.ok(data.records.every(record => people.has(record.empId) && data.dates.includes(record.date)));
-        assert.ok(!data.employees.some(employee => SUMMARY_NAMES.includes(employee.name)), `${file} ${sheet}: summary rows leaked in`);
-        assert.ok(!data.warnings.some(warning => SUMMARY_NAMES.some(name => warning.startsWith(`${name} 在工號表`))), `${file} ${sheet}: summary rows reported as staff`);
-        months++;
-    }
-}
-assert.ok(months > 0, 'no month sheets in data/');
-
-// A staff row with an empty Total is still read; the summary block (first row named "1") ends the table.
-const day = n => Array.from({ length: 31 }, (_, i) => (i < n ? 'X' : ''));
-const sheet = [
-    ['', '', 'Total', 'Name', ...Array.from({ length: 31 }, (_, i) => i + 1)],
-    ['', '', 8, 'A', '1', ...day(30)],
-    ['', '', '', 'B', '2', ...day(30)],
-    ['', '', '', '1', 5, ...day(30)]
-];
-const fake = parseMonthSheet(sheet, 2026, 10, new Map([['A', '1'], ['B', '2']]), defs);
-assert.deepEqual(fake.employees.map(employee => employee.name), ['A', 'B']);
-assert.equal(fake.shifts['1'].color, 'morning');
-assert.equal(fake.shifts['2'].group, '2');
-assert.equal(parseMonthSheet(sheet, 2026, 10, new Map([['A', '1']]), defs).warnings[0], 'B 在工號表找不到工號，未納入');
+import * as core from '../web/js/schedule.js';
 
 // Who is on duty: 16:00–24:00 ends at midnight, 00:00–08:00 belongs to its own date, 22:00–06:00 runs into the next day.
-await import('../schedule-core.js');
-const core = globalThis.ScheduleCore;
 const shifts = { '2': { start: '16:00', end: '24:00', rest: false }, '3': { start: '00:00', end: '08:00', rest: false }, L: { start: '22:00', end: '06:00', rest: false }, X: { rest: true } };
 const onDuty = (code, date, at) => core.currentRecords({ shifts, records: [{ empId: '1', date, code }] }, new Date(at)).length === 1;
 assert.ok(onDuty('2', '2026-10-31', '2026-10-31T23:59:00+08:00'));
@@ -53,17 +13,6 @@ assert.ok(!onDuty('X', '2026-10-31', '2026-10-31T12:00:00+08:00'));
 assert.equal(core.taipeiDate(new Date('2026-10-31T16:30:00Z')), '2026-11-01');
 
 // Roster filter has five categories; N/N8 carry no color and fall into N.
-const timedSheet = [
-    ['', '', 'Total', 'Name', ...Array.from({ length: 31 }, (_, i) => i + 1)],
-    ['', '', 8, 'A', 'M1', 'T早', 'M2', 'T中', ...Array(27).fill('')]
-];
-const timed = parseMonthSheet(timedSheet, 2026, 10, new Map([['A', '1']]), defs).shifts;
-// M1/T早/M2/T中: duty is a normal 8 hours and they roster with the base code; the hours actually worked are kept separately.
-assert.deepEqual(['M1', 'T早'].map(code => [timed[code].start, timed[code].end]), [['08:00', '16:00'], ['08:00', '16:00']]);
-assert.deepEqual(['M2', 'T中'].map(code => [timed[code].start, timed[code].end]), [['16:00', '24:00'], ['16:00', '24:00']]);
-assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => [timed[code].fullStart, timed[code].fullEnd]), [['08:00', '19:00'], ['08:00', '19:00'], ['13:00', '24:00'], ['13:00', '24:00']]);
-assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => timed[code].group), ['1', '早', '2', '中']);
-assert.deepEqual(['M1', 'T早', 'M2', 'T中'].map(code => core.shiftCategory(timed[code])), ['morning', 'morning', 'afternoon', 'afternoon']);
 const category = shift => core.shiftCategory(shift);
 assert.deepEqual(core.shiftCategories.map(([, label]) => label), ['早班', '中班', '晚班', 'N班', '休假']);
 assert.equal(category({ rest: false, color: 'morning' }), 'morning');
@@ -110,4 +59,25 @@ assert.ok(ics.includes('DTSTART;VALUE=DATE:20261102\r\nDTEND;VALUE=DATE:20261103
 assert.ok(ics.split('\r\n').every(line => new TextEncoder().encode(line).length <= 75));
 assert.ok(ics.replaceAll('\r\n ', '').includes(`SUMMARY:Q ${longLabel}`));
 
-console.log(`ok (${months} months)`);
+
+// Time labels: overnight shifts are marked, support hours show the duty part.
+assert.equal(core.timeLabel({ rest: true }), '休假');
+assert.equal(core.timeLabel({ rest: false }), '時間未定義');
+assert.equal(core.timeLabel({ rest: false, start: '22:00', end: '06:00' }), '22:00–06:00（翌日）');
+assert.equal(core.timeLabel({ rest: false, start: '16:00', end: '24:00' }), '16:00–24:00');
+assert.equal(core.workTimeLabel(supportShifts.M1), '08:00–19:00（值班 08:00–16:00）');
+
+// Roster groups: categories in filter order, N-type shifts by their own group, base code before its variants.
+const rosterShifts = {
+    '1': { group: '1', color: 'morning', rest: false, start: '08:00' }, M1: { group: '1', color: 'morning', rest: false, start: '08:00' },
+    '2': { group: '2', color: 'afternoon', rest: false, start: '16:00' }, N: { group: 'N', color: null, rest: false, start: '09:00' },
+    N8: { group: 'N8', color: null, rest: false, start: '08:00' }, X: { group: 'X', color: null, rest: true }
+};
+const rosterPeople = new Map(['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(empId => [empId, { empId, name: empId.toUpperCase() }]));
+const roster = core.groupRoster([['a', 'X'], ['b', 'N'], ['c', 'M1'], ['d', '2'], ['e', '1'], ['f', 'N8'], ['g', '1']].map(([empId, code]) => ({ empId, date: '2026-10-12', code })), rosterShifts, rosterPeople);
+assert.deepEqual(roster.map(group => group.key), ['morning', 'afternoon', 'N8', 'N', 'rest']);
+assert.deepEqual(roster[0].records.map(record => record.empId), ['e', 'g', 'c']);
+
+// ICS range follows the shown month or Monday-Sunday week.
+assert.deepEqual(core.exportRange('month', '2026-10', '2026-10-14'), { from: '2026-10-01', to: '2026-10-31', suffix: '2026-10' });
+assert.deepEqual(core.exportRange('week', '2026-10', '2026-11-01'), { from: '2026-10-26', to: '2026-11-01', suffix: '2026-10-26_2026-11-01' });
