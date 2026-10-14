@@ -221,5 +221,8 @@ dialog input { width: 100%; margin-top: 14px; }
     #personal:not([hidden]), #personalSchedule:not([hidden]), .calendar-panel { flex: 1; display: flex; flex-direction: column; }
     .calendar:not([hidden]) { flex: 1; grid-auto-rows: minmax(40px, 1fr); }
     #weekList:not([hidden]) { flex: 1; grid-auto-rows: minmax(46px, 1fr); }
+    /* The calendar fills leftover height; the colleagues card extends the page instead of shrinking it (see app.js). */
+    body { min-height: calc(100dvh + var(--colleagues-height, 0px)); }
+    .stat-line { min-height: 3.1em; }
 }
 @media (prefers-reduced-motion: no-preference) { main > section { animation: appear .18s ease-out; } @keyframes appear { from { opacity: .6; transform: translateY(3px); } to { opacity: 1; transform: none; } } }
