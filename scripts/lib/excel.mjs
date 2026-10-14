@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
 import { SHIFT_TYPES, TIME_ALIASES, DUTY_TIMES, FULL_TIMES, ROSTER_GROUPS, REST_CODES, COLORS, GROUP_LABELS } from './shift-rules.mjs';
+import { leaderCells } from './leaders.mjs';
 
 export const DATA = path.resolve(import.meta.dirname, '../../data');
 export const DB_FILE = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
@@ -18,6 +19,15 @@ export function readWorkbook(file) {
 
 export function sheetRows(workbook, name) {
     return XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '', raw: true });
+}
+
+// "row,col" keys of leader-orange cells, shifted to the same origin as the arrays from sheetRows().
+export function sheetLeaders(file, workbook, name) {
+    const origin = XLSX.utils.decode_range(workbook.Sheets[name]['!ref']).s;
+    return new Set([...leaderCells(path.join(DATA, file)).get(name) ?? []].map(key => {
+        const [row, col] = key.split(',').map(Number);
+        return `${row - origin.r},${col - origin.c}`;
+    }));
 }
 
 // 工號 sheet: active staff in A/B, leavers in E/F as fallback. First entry per name wins.
@@ -69,7 +79,7 @@ function findDayHeader(rows) {
     return null;
 }
 
-export function parseMonthSheet(rows, year, month, ids, defs) {
+export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set()) {
     const header = findDayHeader(rows);
     if (!header) return null;
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
@@ -108,7 +118,7 @@ export function parseMonthSheet(rows, year, month, ids, defs) {
             const label = GROUP_LABELS[group] || (defs.get(type)?.label || type).replaceAll('NNOC', 'NOC').replace(/^NOC-/, '');
             shifts[code] = { type, label, group, color: COLORS[code] || null, rest, start: rest ? null : duty?.[0] || timeDef?.start || null, end: rest ? null : duty?.[1] || timeDef?.end || null, ...(full && { fullStart: full[0], fullEnd: full[1] }) };
             if (!rest && (!shifts[code].start || !shifts[code].end)) warnings.add(`班別 ${code} (${type}) 缺少時間，未納入當前值班判斷`);
-            records.push({ empId, date, code });
+            records.push({ empId, date, code, ...(leaders.has(`${index},${header.dayCol + day}`) && { leader: true }) });
         });
     }
     if (!records.length) throw new Error(`${monthKey} 沒有任何可用排班`);

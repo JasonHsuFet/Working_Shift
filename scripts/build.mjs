@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { DATA, DB_FILE, readWorkbook, sheetRows, readLookups, parseMonthSheet } from './lib/excel.mjs';
+import { DATA, DB_FILE, readWorkbook, sheetRows, sheetLeaders, readLookups, parseMonthSheet } from './lib/excel.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
@@ -22,7 +22,7 @@ function build() {
                 console.warn(`warning: ${file} 工作表「${sheet}」不是月份班表，已略過`);
                 continue;
             }
-            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs);
+            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs, sheetLeaders(file, workbook, sheet));
             if (!data) throw new Error(`${file} 工作表「${sheet}」前 10 列找不到日期欄（1、2、3…）`);
             data.warnings.unshift(...dbWarnings);
             const key = data.dates[0].slice(0, 7);
