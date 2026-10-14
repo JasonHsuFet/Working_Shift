@@ -170,7 +170,7 @@ function renderSelectedDay() {
     const description = textNode('div', '', 'shift-text');
     const colorClass = schedule.shiftClass(shift);
     description.append(textNode('p', shift.label, colorClass), textNode('small', schedule.workTimeLabel(shift), colorClass));
-    detail.append(textNode('span', record.code, `shift-code ${colorClass}`), description);
+    detail.append(textNode('span', record.code, `shift-code ${colorClass}${record.leader ? ' leader-dot' : ''}`), description);
     container.append(detail);
 }
 
@@ -246,7 +246,7 @@ function renderWeek() {
         day.append(textNode('strong', monthDay(date)), textNode('small', weekdayLabel(date)));
         const description = textNode('div', '', 'shift-text');
         description.append(textNode('p', shift ? shift.label : '無排班資料', colorClass), textNode('small', shift ? schedule.workTimeLabel(shift) : '—', colorClass));
-        row.append(day, textNode('span', record ? record.code : '—', `shift-code ${colorClass}`), description);
+        row.append(day, textNode('span', record ? record.code : '—', `shift-code ${colorClass}${record?.leader ? ' leader-dot' : ''}`), description);
         list.append(row);
     }
     renderSelectedDay();
