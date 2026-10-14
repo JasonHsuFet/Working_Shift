@@ -440,6 +440,9 @@ for (const [id, label, short] of [['now', '目前值班', '現'], ['', '全部�
 
 updateStatus();
 element('onDutyDate').value = schedule.taipeiDate();
+element('onDutyDate').min = data.range.start;
+element('onDutyDate').max = data.range.end;
+let followToday = true;
 const router = createRouter();
 element('employeeForm').addEventListener('submit', event => {
     event.preventDefault();
@@ -516,11 +519,15 @@ element('todayPeriod').addEventListener('click', goCurrent);
 element('pickerClose').addEventListener('click', () => picker.close());
 picker.addEventListener('click', event => { if (event.target === picker) picker.close(); });
 element('exportIcs').addEventListener('click', exportIcs);
-element('onDutyDate').addEventListener('change', () => renderOnDuty());
-element('goToday').addEventListener('click', () => { element('onDutyDate').value = schedule.taipeiDate(); setFilter('now'); renderOnDuty(); });
+element('onDutyDate').addEventListener('change', () => {
+    followToday = element('onDutyDate').value === schedule.taipeiDate();
+    renderOnDuty();
+});
+element('goToday').addEventListener('click', () => { element('onDutyDate').value = schedule.taipeiDate(); followToday = true; setFilter('now'); renderOnDuty(); });
 for (const [id, delta] of [['prevDay', -1], ['nextDay', 1]]) {
     element(id).addEventListener('click', () => {
         if (!element('onDutyDate').value) return;
+        followToday = false;
         element('onDutyDate').value = schedule.addDays(element('onDutyDate').value, delta);
         renderOnDuty();
     });
@@ -603,13 +610,19 @@ router
     })
     .on('/on-duty', () => {
         showTab('on-duty');
+        element('onDutyDate').value = schedule.liveDate(element('onDutyDate').value, schedule.taipeiDate(), followToday);
         renderOnDuty();
     })
     .notFound(() => router.navigate('/personal', { replace: true }))
     .resolve();
 
 // Only today's on-duty view shows a live clock and the 'now' roster, so only it needs the periodic refresh.
-const refreshLive = () => { if (activeTab === 'on-duty' && element('onDutyDate').value === schedule.taipeiDate()) renderOnDuty(); };
+const refreshLive = () => {
+    if (activeTab !== 'on-duty') return;
+    const today = schedule.taipeiDate();
+    element('onDutyDate').value = schedule.liveDate(element('onDutyDate').value, today, followToday);
+    if (element('onDutyDate').value === today) renderOnDuty();
+};
 setInterval(refreshLive, 30000);
 window.addEventListener('online', checkPublished);
 window.addEventListener('offline', updateStatus);

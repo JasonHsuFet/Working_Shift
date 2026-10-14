@@ -12,6 +12,10 @@ assert.ok(onDuty('L', '2026-10-31', '2026-11-01T05:59:00+08:00'));
 assert.ok(!onDuty('X', '2026-10-31', '2026-10-31T12:00:00+08:00'));
 assert.equal(core.taipeiDate(new Date('2026-10-31T16:30:00Z')), '2026-11-01');
 
+// Live on-duty view follows the calendar date change; a manually selected date is not overridden.
+assert.equal(core.liveDate('2026-10-14', '2026-10-15', true), '2026-10-15');
+assert.equal(core.liveDate('2026-10-13', '2026-10-15', false), '2026-10-13');
+
 // Roster filter has five categories; N/N8 carry no color and fall into N.
 const category = shift => core.shiftCategory(shift);
 assert.deepEqual(core.shiftCategories.map(([, label]) => label), ['早班', '中班', '晚班', 'N班', '休假']);

@@ -9,6 +9,10 @@ export function taipeiDate(now = new Date()) {
     return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
+export function liveDate(selectedDate, today, followToday) {
+    return followToday ? today : selectedDate;
+}
+
 export function addDays(date, count) {
     const value = new Date(`${date}T00:00:00Z`);
     value.setUTCDate(value.getUTCDate() + count);
