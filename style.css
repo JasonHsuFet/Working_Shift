@@ -5,7 +5,6 @@
     --paper: #fff;
     --red: #c92e36;
     --teal: #126c60;
-    --leader: #d97f00;
     --wash: #edf6f2;
     --yellow: #fff5cf;
     --shift-morning: #b42332;
@@ -38,7 +37,6 @@
     --page: #181c1b;
     --red: #ff8d98;
     --teal: #83d8bd;
-    --leader: #ffb020;
     --wash: #253d36;
     --yellow: #443c23;
     --shift-morning: #ff8d98;
@@ -153,7 +151,7 @@ input[type="text"], input[type="date"], select { min-width: 0; background: var(-
 .shift-text { min-width: 0; }.shift-text p { font-size: 13px; overflow-wrap: anywhere; }.shift-text small { display: block; color: var(--muted); margin-top: 0; font-size: 11px; }
 .live-row { display: flex; align-items: center; gap: 6px; }
 .live-dot { width: 8px; height: 8px; background: var(--teal); border-radius: 50%; }
-.live-dot.warn { background: var(--rest-dot); }\n.leader { color: var(--leader); font-weight: 700; }
+.live-dot.warn { background: var(--rest-dot); }
 .roster-item.me { border-color: var(--teal); box-shadow: inset 3px 0 0 var(--teal); }
 .notice { border-left: 3px solid #d6ad36; background: var(--yellow); padding: 8px 10px; font-size: 13px; margin: 10px 0; overflow-wrap: anywhere; }
 /* Fades out after 8s; hovering or focusing it restarts the wait. */

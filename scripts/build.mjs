@@ -29,8 +29,6 @@ const COLORS = {
     '3': 'night', '晚': 'night', '大夜': 'night'
 };
 const GROUP_LABELS = { '1': 'Mobile 早班', '早': 'TX 早班', '中': 'TX 中班' };
-// A shift cell filled this orange marks that day's leader of the shift.
-const LEADER_FILL = 'FFFFC000';
 
 function text(value) {
     return value == null ? '' : String(value).trim();
@@ -38,19 +36,7 @@ function text(value) {
 
 // ponytail: sheetRows cap, since some sheets claim 1,048,576 used rows; raise it if staff tables ever pass 1000 rows
 export function readWorkbook(file) {
-    return XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000, cellStyles: true });
-}
-
-// Keys are "row,col" relative to the sheet's first row/column, matching the arrays from sheetRows().
-export function leaderCells(sheet) {
-    const start = XLSX.utils.decode_range(sheet['!ref']).s;
-    const leaders = new Set();
-    for (const [address, cell] of Object.entries(sheet)) {
-        if (address[0] === '!' || cell.s?.fgColor?.rgb?.toUpperCase() !== LEADER_FILL) continue;
-        const { r, c } = XLSX.utils.decode_cell(address);
-        leaders.add(`${r - start.r},${c - start.c}`);
-    }
-    return leaders;
+    return XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000 });
 }
 
 export function sheetRows(workbook, name) {
@@ -106,7 +92,7 @@ function findDayHeader(rows) {
     return null;
 }
 
-export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set()) {
+export function parseMonthSheet(rows, year, month, ids, defs) {
     const header = findDayHeader(rows);
     if (!header) return null;
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
@@ -145,7 +131,7 @@ export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set(
             const label = GROUP_LABELS[group] || (defs.get(type)?.label || type).replaceAll('NNOC', 'NOC').replace(/^NOC-/, '');
             shifts[code] = { type, label, group, color: COLORS[code] || null, rest, start: rest ? null : duty?.[0] || timeDef?.start || null, end: rest ? null : duty?.[1] || timeDef?.end || null, ...(full && { fullStart: full[0], fullEnd: full[1] }) };
             if (!rest && (!shifts[code].start || !shifts[code].end)) warnings.add(`班別 ${code} (${type}) 缺少時間，未納入當前值班判斷`);
-            records.push({ empId, date, code, ...(leaders.has(`${index},${header.dayCol + day}`) && { leader: true }) });
+            records.push({ empId, date, code });
         });
     }
     if (!records.length) throw new Error(`${monthKey} 沒有任何可用排班`);
@@ -167,7 +153,7 @@ function build() {
                 console.warn(`warning: ${file} 工作表「${sheet}」不是月份班表，已略過`);
                 continue;
             }
-            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs, leaderCells(workbook.Sheets[sheet]));
+            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs);
             if (!data) throw new Error(`${file} 工作表「${sheet}」前 10 列找不到日期欄（1、2、3…）`);
             data.warnings.unshift(...dbWarnings);
             const key = data.dates[0].slice(0, 7);
