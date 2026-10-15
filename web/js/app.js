@@ -552,6 +552,12 @@ function onSwipe(target, previous, next) {
 }
 onSwipe(element('personalSchedule'), () => element('prevPeriod').click(), () => element('nextPeriod').click());
 onSwipe(element('on-duty'), () => element('prevDay').click(), () => element('nextDay').click());
+// Grow the page by the colleagues card (plus its gap) so the mobile calendar keeps the same height.
+new ResizeObserver(() => {
+    const colleagues = element('colleagues');
+    const height = colleagues.offsetParent ? colleagues.getBoundingClientRect().bottom - element('dayDetail').getBoundingClientRect().bottom : 0;
+    document.body.style.setProperty('--colleagues-height', `${height}px`);
+}).observe(element('colleagues'));
 
 const dialog = element('empDialog');
 element('empDialogForm').addEventListener('submit', event => {

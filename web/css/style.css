@@ -219,12 +219,15 @@ dialog input { width: 100%; margin-top: 14px; }
     .primary { padding: 8px 14px; }.person-heading h2 { font-size: 16px; }
 }
 @media (max-width: 520px) {
-    body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+    /* The calendar fills leftover height; the colleagues card extends the page instead of shrinking it (see app.js). */
+    body { min-height: 100vh; min-height: calc(100dvh + var(--colleagues-height, 0px)); display: flex; flex-direction: column; }
     /* Auto margins in a flex column disable stretching, so set the width explicitly. */
     .masthead, main { width: 100%; }
     main { flex: 1; display: flex; flex-direction: column; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
     #personal:not([hidden]), #personalSchedule:not([hidden]), .calendar-panel { flex: 1; display: flex; flex-direction: column; }
     .calendar:not([hidden]) { flex: 1; grid-auto-rows: minmax(40px, 1fr); }
     #weekList:not([hidden]) { flex: 1; grid-auto-rows: minmax(46px, 1fr); }
+    /* The streak line wraps on narrow phones; reserve two lines so it cannot resize the calendar either. */
+    .stat-line { min-height: 3.1em; }
 }
 @media (prefers-reduced-motion: no-preference) { main > section { animation: appear .18s ease-out; } @keyframes appear { from { opacity: .6; transform: translateY(3px); } to { opacity: 1; transform: none; } } }
