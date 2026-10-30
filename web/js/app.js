@@ -205,6 +205,18 @@ function renderCalendar() {
     }
     renderSelectedDay();
     renderInsights(`${month}-01`, `${month}-31`, '本月');
+    sizeDays();
+}
+
+// On phones, measure the cell height a six-week month gets from the free height, so every month uses it and fits on screen.
+const phone = matchMedia('(max-width: 520px)');
+function sizeDays() {
+    const calendar = element('calendar');
+    if (!phone.matches || !calendar.offsetParent) return;
+    document.body.classList.add('measuring');
+    const height = parseFloat(getComputedStyle(calendar).gridTemplateRows);
+    document.body.classList.remove('measuring');
+    if (height) calendar.style.setProperty('--day-height', `${height}px`);
 }
 
 function syncSelectedDate() {
@@ -258,6 +270,7 @@ function renderPersonal() {
     const isWeek = view === 'week';
     for (const id of ['calendar', 'weekdays']) element(id).hidden = isWeek;
     element('weekList').hidden = !isWeek;
+    element('calendar').parentElement.classList.toggle('month', !isWeek);
     document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
     element('prevPeriod').title = isWeek ? '上一週' : '上個月';
     element('nextPeriod').title = isWeek ? '下一週' : '下個月';
@@ -557,7 +570,17 @@ new ResizeObserver(() => {
     const colleagues = element('colleagues');
     const height = colleagues.offsetParent ? colleagues.getBoundingClientRect().bottom - element('dayDetail').getBoundingClientRect().bottom : 0;
     document.body.style.setProperty('--colleagues-height', `${height}px`);
+    sizeDays();
 }).observe(element('colleagues'));
+// Cell height is a pure function of (width, svh): recompute on every resize, not just lazily at the next
+// month switch, so it can never get stuck at a height that no longer applies. A phone's toolbar hiding or
+// showing changes innerHeight but not svh, so a real device remeasures to the same value; a genuine height
+// change (a resized desktop window, split screen) is picked up right away. One measurement per frame.
+let resizeFrame = null;
+window.addEventListener('resize', () => {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(() => { resizeFrame = null; sizeDays(); });
+});
 
 const dialog = element('empDialog');
 element('empDialogForm').addEventListener('submit', event => {

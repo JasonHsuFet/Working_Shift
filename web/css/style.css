@@ -225,7 +225,13 @@ dialog input { width: 100%; margin-top: 14px; }
     .masthead, main { width: 100%; }
     main { flex: 1; display: flex; flex-direction: column; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
     #personal:not([hidden]), #personalSchedule:not([hidden]), .calendar-panel { flex: 1; display: flex; flex-direction: column; }
-    .calendar:not([hidden]) { flex: 1; grid-auto-rows: minmax(40px, 1fr); }
+    /* Month view: every cell is as tall as a six-week month's cells in the free height (measured in app.js), and the grid only has the rows the month needs. */
+    .calendar-panel.month { flex: none; }
+    .calendar:not([hidden]) { grid-auto-rows: var(--day-height, 40px); }
+    /* Measured against the toolbar-expanded height (svh) so a toolbar showing or hiding while scrolling never resizes the cells. */
+    body.measuring { min-height: calc(100svh + var(--colleagues-height, 0px)); }
+    .measuring .calendar-panel { flex: 1; }
+    .measuring .calendar-panel > .calendar { flex: 1; grid-template-rows: repeat(6, minmax(40px, 1fr)); }
     #weekList:not([hidden]) { flex: 1; grid-auto-rows: minmax(46px, 1fr); }
     /* The streak line wraps on narrow phones; reserve two lines so it cannot resize the calendar either. */
     .stat-line { min-height: 3.1em; }
