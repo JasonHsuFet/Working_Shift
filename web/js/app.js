@@ -6,7 +6,19 @@ import { createRouter } from './router.js';
 const element = id => document.getElementById(id);
 const EMP_ID_KEY = 'noc.empId';
 const VIEW_KEY = 'noc.view';
-element('annualScheduleDownload').href = `./data/All_${new Date().getFullYear()}.xlsx`;
+const excelLink = element('annualScheduleDownload');
+const excelName = `All_${new Date().getFullYear()}.xlsx`;
+excelLink.href = `./data/${excelName}`;
+// iOS standalone keeps in-scope links inside the app with no way back, so share the file (prefetched: share() needs the click's user gesture).
+let excelFile = null;
+fetch(excelLink.href).then(response => response.ok ? response.blob() : null).then(blob => {
+    if (blob) excelFile = new File([blob], excelName, { type: blob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}).catch(() => { });
+excelLink.addEventListener('click', event => {
+    if (!excelFile || !navigator.canShare?.({ files: [excelFile] })) return;
+    event.preventDefault();
+    navigator.share({ files: [excelFile], title: excelName }).catch(() => { });
+});
 
 // legacy: ?empno=/?theme= from old links and home-screen icons; remove when no longer used
 if (location.search) {
