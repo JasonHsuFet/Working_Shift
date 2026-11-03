@@ -68,7 +68,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .masthead, main, footer { max-width: 720px; margin: 0 auto; }
 .masthead { padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px; background: var(--paper); }
 .header-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
+.header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .theme-toggle { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; margin-left: auto; border: 1px solid var(--line); border-radius: 50%; background: var(--cell); color: var(--ink); }
+.header-actions .theme-toggle { margin-left: 0; }
+.download-toggle { color: #1d6f42; }
+:root[data-theme="dark"] .download-toggle { color: #78c792; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand img { object-fit: contain; }
 h1, h2, h3, p { margin: 0; }

@@ -6,6 +6,7 @@ import { createRouter } from './router.js';
 const element = id => document.getElementById(id);
 const EMP_ID_KEY = 'noc.empId';
 const VIEW_KEY = 'noc.view';
+element('annualScheduleDownload').href = `./data/All_${new Date().getFullYear()}.xlsx`;
 
 // legacy: ?empno=/?theme= from old links and home-screen icons; remove when no longer used
 if (location.search) {

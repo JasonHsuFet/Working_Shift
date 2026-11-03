@@ -36,6 +36,9 @@ function build() {
     if (!months.length) throw new Error('data/ 沒有任何 All_YYYY.xlsx 月份班表');
     fs.writeFileSync(path.join(DIST, 'data', 'index.json'), JSON.stringify({ months: months.sort(), generatedAt: new Date().toISOString() }));
     fs.cpSync(path.join(ROOT, 'web'), DIST, { recursive: true });
+    const year = new Date().getFullYear();
+    const annualFile = `All_${year}.xlsx`;
+    fs.copyFileSync(path.join(DATA, annualFile), path.join(DIST, 'data', annualFile));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) build();
