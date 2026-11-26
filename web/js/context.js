@@ -74,4 +74,5 @@ export async function ensure(wanted) {
     }
 }
 
-export const hasDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date) && months.includes(date.slice(0, 7));
+export const isDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date);
+export const hasDate = date => isDate(date) && months.includes(date.slice(0, 7));

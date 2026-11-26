@@ -21,10 +21,8 @@ export function addDays(date, count) {
 export function bounds(record, shifts, full = false) {
     const shift = shifts[record.code];
     if (!shift || shift.rest || !shift.start || !shift.end) return null;
-    const timestamp = time => {
-        const date = time === '24:00' ? addDays(record.date, 1) : record.date;
-        return Date.parse(`${date}T${time === '24:00' ? '00:00' : time}:00+08:00`);
-    };
+    // 24:00 is read as 00:00; the end <= start wrap below moves it to the next day.
+    const timestamp = time => Date.parse(`${record.date}T${time === '24:00' ? '00:00' : time}:00+08:00`);
     const start = timestamp(full ? shift.fullStart || shift.start : shift.start);
     let end = timestamp(full ? shift.fullEnd || shift.end : shift.end);
     if (end <= start) end += 86400000;

@@ -71,7 +71,6 @@ export async function createStore(today) {
         sourceUpdatedAt: index.generatedAt
     };
     store.baseMonth = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : months.at(-1);
-    await loadMonth(store.baseMonth);
     await ensure([store.baseMonth]);
     return store;
 }

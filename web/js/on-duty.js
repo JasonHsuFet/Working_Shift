@@ -1,10 +1,9 @@
 import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
-import { data, employees, state, ensure, hasDate } from './context.js';
+import { data, employees, state, ensure, hasDate, isDate } from './context.js';
 import { dateLabel, memo, onSwipe } from './dom.js';
 
 const categoryLabel = Object.fromEntries(schedule.shiftCategories);
-const isDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date);
 const clock = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', timeStyle: 'short' });
 // `me`: empId of the person on the personal tab, marked in the roster.
 function rosterGroups(records, me) {
@@ -73,7 +72,10 @@ Alpine.data('onDuty', () => {
         },
         get notice() {
             if (this.filter === 'now') return this.unknown.length ? '部分班別時間未定義；以下僅列已知時段的值班人員。' : '';
-            return this.written ? '' : hasDate(this.shown) ? '此日期尚未排班。' : '此日期不在已發布資料期間。';
+            if (this.written) return '';
+            if (!hasDate(this.shown)) return '此日期不在已發布資料期間。';
+            // A month that failed to download: the load error is already shown at the top.
+            return this.shown.slice(0, 7) in data.writtenDays ? '此日期尚未排班。' : '';
         },
         // Empty while the tab is hidden, so loads and clock ticks do not redraw it.
         get groups() {
@@ -108,7 +110,7 @@ Alpine.data('onDuty', () => {
             this.load();
         },
         step(delta) {
-            if (!this.date) return;
+            if (delta < 0 ? this.prevDisabled : this.nextDisabled) return;
             this.followToday = false;
             this.date = schedule.addDays(this.date, delta);
             this.load();
