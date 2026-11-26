@@ -99,3 +99,86 @@ router '/on-duty' → onDuty.showOnDuty → renderOnDuty (await ensure) → rend
 5. **`excel.test.mjs` 會跑 `data/` 裡的真實資料**，壞資料會讓 test 先失敗，錯誤訊息比 build 少。
 6. **統計（早／中／晚／N／休）、連續上班、下個休假日仍直接掃 `records`**，沒有走 `dayState`；也不計「未排」天數，月份排到一半時加總會少於該月天數。
 7. **前端沒有自動化 UI 測試**。重構時曾在暫存目錄用 jsdom 載入 `dist/` 跑過一遍，但沒有放進 repo。
+
+## 4. 相依盤點
+
+### 後端（建置、測試、CI）
+
+**套件**
+
+| 套件 | 版本 | 來源 | 用途 | 備註 |
+|---|---|---|---|---|
+| `xlsx`（SheetJS 社群版） | 0.20.3 | `cdn.sheetjs.com` 的 tarball，不在 npm registry | 讀 xlsx／xlsm 與儲存格底色 | lockfile 記錄 sha512 integrity，CDN 上的檔案被換掉時安裝失敗；CDN 連不上時只能靠 CI 的 pnpm 快取。放在 `dependencies`，CI 的 `--prod` 只裝它。自動更新工具不會追蹤，升級步驟見 README。 |
+| `vite` | `^8.3.3`（lock 8.3.3） | npm | 只用在本機 `pnpm preview` | lockfile 50 個套件中有 49 個屬於它（多數是各平台的二進位檔，實際安裝約 19 個）。放在 `devDependencies`，CI 用 `--prod` 不安裝。 |
+
+**執行環境**
+
+- Node 內建模組：`fs`、`path`、`url`、`assert`，測試跑在 `node --test` 上。
+- Node 版本：CI 固定 22，`package.json` 沒有 `engines`。
+  - 程式用到 `import.meta.dirname`，需要 Node 20.11 以上。
+  - vite 8 需要 `^20.19 || >=22.12`。
+- pnpm 12.18.0（`packageManager` 欄位）。pnpm 10 不會替網址安裝的 tarball 記 integrity，pnpm 12 會，而且遇到沒有 integrity 的項目會拒絕安裝。lockfile 也會鎖定 pnpm 本身的版本與雜湊。
+- GitHub Actions：`checkout@v7`、`pnpm/action-setup@v6`、`setup-node@v7`、`configure-pages@v6`、`upload-pages-artifact@v5`、`deploy-pages@v5`。
+
+**資料**
+
+- `data/All_YYYY.xlsx`：工作表 `01`…`12`。
+- `data/TPKC_NNOC班表模板_V1_3_DB版.xlsm`：檔名寫死在 `excel.mjs` 的 `DB_FILE`，裡面要有「工號」「NNOC班別」兩張表。
+
+**模組圖**
+
+```
+scripts/build.mjs ─→ scripts/lib/excel.mjs ─→ scripts/lib/shift-rules.mjs
+                                           └→ xlsx
+test/excel.test.mjs ─→ scripts/lib/excel.mjs
+                    └→ web/js/schedule.js        ← 前後端唯一的程式碼交會點
+test/schedule.test.mjs ─→ web/js/schedule.js
+test/router.test.mjs ──→ web/js/router.js（用假的 window）
+```
+
+### 前端
+
+**第三方相依：無。**
+
+- 執行時不連外部網址，沒有 CDN。
+- 沒有網頁字型，用的是系統字型堆疊。
+- 圖示裡的 Archivo Black 已轉成 SVG 路徑，不需要字型檔。
+
+**模組圖**（沒有循環相依）
+
+```
+app.js ─┬→ employee.js ─→ personal.js ─┐
+        ├→ on-duty.js ─────────────────┤
+        └──────────────────────────────┴→ context.js ─→ store.js, router.js
+   全部 ──→ schedule.js、dom.js（葉節點，不再 import 任何東西）
+theme.js：一般 <script>，在 <head> 同步執行，沒有 import
+sw.js：獨立執行，只靠 SHELL 清單知道有哪些檔
+```
+
+- `context.js` 有 top-level `await createStore()`，所以所有 import 它的模組都要等索引檔和當月班表下載完才會執行。
+- 班別規則（`shift-rules.mjs`）只在建置端。前端看的是 JSON 裡已算好的 `shifts`，和建置端之間的契約就是第 1 節的資料物件形狀。
+
+**瀏覽器能力**
+
+| 類別 | 項目 |
+|---|---|
+| 必要（沒有備援） | ES modules + top-level await、`Array.prototype.at`、`replaceChildren`、`ResizeObserver`、`Intl.DateTimeFormat` 的 `timeZone`／`formatToParts`、`fetch`、pointer events、`TextEncoder`、`Blob`＋`createObjectURL`（ICS）、`<datalist>`、`<input type="date">` |
+| 有備援 | `<dialog>.showModal`（沒有就用頁內表單）、popover（沒有就內嵌提示）、`AbortSignal.timeout`（沒有就不設逾時）、`navigator.share`（只在 iOS 主畫面 App 用）、Service Worker（沒有就不能離線）、`svh`／`dvh`（前面有 `100vh`）、`localStorage`（全部包在 try/catch 裡） |
+
+實際最低版本約為 Chrome 92、Safari 15.4、Firefox 90，取決於 top-level await 和 `Array.prototype.at`。
+
+### 不在 repo 的工具
+
+這次重構時用過，但只裝在暫存目錄，重開機可能消失：
+
+- `jsdom` 26.1.0：在 Node 裡載入頁面做冒煙測試。
+- `opentype.js` 1.3.4、`@fontsource/archivo-black` 5.2.5、`@resvg/resvg-js` 2.6.2：重繪 NOC 圖示並輸出 PNG。
+
+### 觀察
+
+1. **已處理：CI 不裝 vite、`xlsx` 已鎖定雜湊。** CI 用 `pnpm install --frozen-lockfile --prod`，只裝 `xlsx`。`xlsx` 仍從 SheetJS CDN 下載，但 lockfile 記有 integrity（升級到 pnpm 12 後才會記）。
+   - `xlsx` 必須留在 `dependencies`，移到 `devDependencies` 的話 `--prod` 就不會裝它。
+   - 若之後要用 Vite 打包（例如第 3 節第 3 點自動產生 SW 清單），CI 要改回完整安裝。
+2. **SheetJS 不會自動更新。** 安全性修正要自己追 SheetJS 的發布，升級步驟見 README。
+3. **Node 版本只寫在 CI**（22），本機可能是別的版本。加上 `engines` 或 `.node-version` 可以讓兩邊一致。
+4. **`schedule.js` 是唯一的跨端模組。** 但建置端的 `excel.mjs` 並沒有 import 它，只有測試把兩邊接起來。若要讓建置時也用 `dayState`／`shiftCategory` 檢查資料，需要從 `scripts/` import `web/js/schedule.js`，或把它搬到兩邊共用的位置。

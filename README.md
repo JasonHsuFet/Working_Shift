@@ -86,7 +86,9 @@ NOC 值班班表網站。純靜態前端，由 Excel 班表在建置時轉成 JS
 
 ## 本機開發
 
-需要 Node.js 22 與 pnpm 10（`corepack enable` 即可）。`xlsx` 套件由 `cdn.sheetjs.com` 下載，需要能連到該網址。
+需要 Node.js 22 與 pnpm 12（`corepack enable` 即可，版本由 `packageManager` 決定）。`xlsx`（SheetJS）不在 npm registry，從 `cdn.sheetjs.com` 下載；`pnpm-lock.yaml` 記錄它的 sha512，CDN 上的檔案被換掉時安裝會失敗。CI 用 `pnpm install --prod` 只裝 `xlsx`；`vite` 只供本機 `pnpm preview`。
+
+升級 SheetJS：`pnpm add https://cdn.sheetjs.com/xlsx-<版本>/xlsx-<版本>.tgz`，確認 `pnpm-lock.yaml` 的 `xlsx` 項目有 `integrity`，一起 commit。
 
 ```
 pnpm install

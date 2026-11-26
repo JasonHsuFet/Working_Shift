@@ -27,7 +27,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # --prod: only xlsx is needed to test and build; vite is for local preview.
+      - run: pnpm install --frozen-lockfile --prod
       - run: pnpm test
       # Re-extracts every month of every data/All_YYYY.xlsx on each push, so an overwritten file is always fully refreshed.
       - run: pnpm build
