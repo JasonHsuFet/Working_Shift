@@ -104,6 +104,7 @@ router '/on-duty'          → activeTab = 'on-duty'
 ```
 
 - 兩個分頁的載入都是「先 `await ensure`、再改狀態」，並用序號丟掉晚回來的舊請求，所以不會先畫出還沒載入的月份。
+- 樣式：`style.css` 開頭定義間距（`--space-3xs`…`--space-2xl`，0.125–1.5rem）與字級（`--text-2xs`…`--text-2xl`，加上標題用的 `clamp()` token `--text-title`、`--text-display`）。尺寸只用 token 或 rem，px 只出現在邊框與陰影，由 `test/css.test.mjs` 檢查。
 - 留在 Alpine 外、直接操作 DOM 的部分：路由、手機格子高度量測（`sizeDays`）、滑動手勢、`showModal`／popover、ICS 下載。
 
 ### 效能

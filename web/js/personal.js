@@ -18,7 +18,7 @@ const weekdayLabel = date => weekday.format(new Date(`${date}T00:00:00+08:00`));
 const UNWRITTEN = schedule.DAY_STATE.UNWRITTEN;
 
 // On phones, measure the cell height a six-week month gets from the free height, so every month uses it and fits on screen.
-const phone = matchMedia('(max-width: 520px)');
+const phone = matchMedia('(max-width: 32.5rem)'); // same breakpoint as style.css
 function sizeDays() {
     const calendar = element('calendar');
     if (!phone.matches || !calendar.offsetParent) return;

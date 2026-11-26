@@ -92,7 +92,7 @@ NOC 值班班表網站。純靜態前端，由 Excel 班表在建置時轉成 JS
 
 ```
 pnpm install
-pnpm test      # test/*.test.mjs：Excel 結構與班別解析、當班判斷、ICS、分類統計、路由
+pnpm test      # test/*.test.mjs：Excel 結構與班別解析、當班判斷、ICS、分類統計、路由、CSS 尺寸規則
 pnpm build     # 產生 dist/（網站檔案 + data/YYYY-MM.json）
 pnpm preview   # 預覽 dist/（先 pnpm build）
 pnpm test:e2e  # e2e/：先 build，再用無頭 Chromium 以桌機與手機（Pixel 7）尺寸操作網站
@@ -147,6 +147,11 @@ package.json                       package 名稱為 not-shift（站名沿用 Wo
 - 命名規則：檔名 kebab-case、以領域命名；瀏覽器端 `.js`（ES module），Node 端 `.mjs`；員工編號一律 `empId`；當日班表一律 `on-duty`；localStorage key 為 `noc.<名稱>`。
 - 瀏覽器端沒有打包工具，`web/` 原樣部署。唯一的執行期依賴是 Alpine.js：`pnpm build` 把 `node_modules/alpinejs/dist/module.esm.min.js` 複製成 `dist/js/alpine.js`，不走 CDN。畫面結構寫在 `index.html` 的 Alpine 樣板，改 UI 時通常改樣板與元件的 getter，不再手動組 DOM。
 - 新增或搬移 `web/` 下的檔案時，更新 `web/sw.js` 的 `SHELL` 並調高 `CACHE` 版本號，否則已安裝的使用者離線時會拿到舊或不完整的檔案。
+- CSS 尺寸規則（`test/css.test.mjs` 會檢查，CI 也跑）：
+  - `font-size`、`padding`、`margin`、`gap` 只能用 `style.css` 開頭定義的 `--space-*`／`--text-*` token，或明確的 rem。
+  - 除了 `border*` 與 `*shadow`，不寫 px（`@media` 也用 rem）；不用 em。
+  - 版面用 flex/grid 加 fr 或 %。
+  - 標題用 `clamp()` 定義的 `--text-title`／`--text-display`。
 - 程式註解用英文，介面文字用繁體中文。
 - `legacy:` 註解標記相容舊版的程式（`?empno=` 轉址、舊 localStorage key `noc-static-theme`／`nnoc-static-empId`／`nnoc-static-view` 搬到 `noc.*`），日後可移除；`ponytail:` 註解標記刻意簡化的已知限制。
 
