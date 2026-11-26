@@ -1,4 +1,4 @@
-// Extracts every month sheet of data/All_YYYY.xlsx into dist/data/YYYY-MM.json, copies the workbooks for download and the SPA (web/) into dist/.
+// Extracts every month sheet of data/All_YYYY.xlsx into dist/data/YYYY-MM.json, copies the workbooks for download, the SPA (web/) and Alpine.js into dist/.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -39,6 +39,8 @@ function build() {
     if (!months.length) throw new Error('data/ 沒有任何 All_YYYY.xlsx 月份班表');
     fs.writeFileSync(path.join(DIST, 'data', 'index.json'), JSON.stringify({ months: months.sort(), generatedAt: new Date().toISOString() }));
     fs.cpSync(path.join(ROOT, 'web'), DIST, { recursive: true });
+    // Served from the site itself (no CDN), so the page works offline and the version is pinned by pnpm-lock.yaml.
+    fs.copyFileSync(path.join(ROOT, 'node_modules/alpinejs/dist/module.esm.min.js'), path.join(DIST, 'js/alpine.js'));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) build();

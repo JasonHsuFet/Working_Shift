@@ -63,42 +63,58 @@ flowchart LR
 
 ## 2. 前端
 
-沒有框架、沒有打包（`vite` 只用在 `pnpm preview`）。`index.html` 是靜態骨架，JS 只填內容與切換 `hidden`。模組載入順序由 import 決定：`context.js` 先跑完（含 `await createStore`），各分頁模組才綁定事件。
+用 Alpine.js 管理 DOM，沒有打包（`vite` 只用在 `pnpm preview`）。畫面結構全寫在 `index.html`（`x-data`／`x-for`／`:class`／`x-text`），JS 只提供狀態和 getter。Alpine 由 `pnpm build` 從 `node_modules` 複製成 `dist/js/alpine.js`，從網站本身提供，不走 CDN。
+
+啟動順序：`context.js` 先跑完（`await createStore`、建立 `Alpine.store('app')`），各分頁模組用 `Alpine.data()` 註冊元件，`app.js` 呼叫 `Alpine.start()` 後才解析路由。
 
 | 檔案 | 職責 |
 |---|---|
 | `js/theme.js` | 在 `<head>` 同步執行，三態主題 |
-| `js/context.js` | 啟動：舊 localStorage key 搬移、註冊 SW、載入 store（失敗顯示錯誤並中止）；匯出 `store`、`data`、`months`、`employees`、`router`、共用 `state`、`ensure`、`hasDate` |
-| `js/personal.js` | 個人班表：月曆／週列表、日期明細、統計、同班同事、年月選擇器、ICS、格子高度量測。私有狀態：`month`、`selectedDate`、`view` |
-| `js/on-duty.js` | 當日班表：名單、篩選列、日期切換、「現」。私有狀態：`rosterFilter`、`followToday`、render 序號 |
-| `js/employee.js` | 工號表單、詢問視窗、自動完成、`#/personal` 路由邏輯 |
-| `js/app.js` | 外框：Excel 下載連結、來源提醒、狀態列、分頁切換、路由表、定時刷新與回到前景檢查新版 |
-| `js/dom.js` | `element`、`textNode`、`notice`、`dateLabel`、`onSwipe` |
+| `js/context.js` | 啟動：舊 localStorage key 搬移、註冊 SW、載入 store（失敗顯示錯誤並中止）、建立 `Alpine.store('app')`；匯出 `store`、`data`、`months`、`employees`、`router`、`state`（即該 Alpine store）、`ensure`、`hasDate` |
+| `js/personal.js` | 元件 `personal`（`#personalSchedule`）：月曆／週列表、日期明細、統計、同班同事、年月選擇器、ICS、格子高度量測。自有狀態：`month`、`selectedDate`、`view`、`pickerYear` |
+| `js/on-duty.js` | 元件 `onDuty`（`#on-duty`）：名單、篩選列、日期切換、「現」。自有狀態：`date`（輸入框）、`shown`（已載入、正在顯示的日期）、`filter`、`followToday` |
+| `js/employee.js` | 元件 `employeeForm`、`employeeDialog`；自動完成；`#/personal` 路由邏輯（`routePersonal`）與 `clearEmployee` |
+| `js/app.js` | 元件 `page`（`<body>`）：Excel 下載連結、來源提醒、狀態列；路由表、時鐘（每 30 秒）、回到前景檢查新版；`Alpine.start()` |
+| `js/alpine.js` | 只在 `dist/`：build 從 `node_modules/alpinejs/dist/module.esm.min.js` 複製 |
+| `js/dom.js` | `element`、`dateLabel`、`onSwipe` |
 | `js/schedule.js` | 業務邏輯（純函式，Node 測試也 import）：`dayState`、`isWritten`、當班判斷、分類統計、分組、ICS |
 | `js/store.js` | 按需載入月份並合併成 `data` |
 | `js/router.js` | hash router |
 | `sw.js` | network-first + 離線快取；`SHELL` 清單與 `CACHE` 版本號手動維護 |
 
-跨模組共用的狀態只剩 `state.employee`（個人班表顯示的人，當日班表用來標「我」）與 `state.activeTab`。
+**共用狀態 `$store.app`**
 
-渲染仍是「狀態改了就整區 `replaceChildren()` 重畫」：
+| 欄位 | 意義 |
+|---|---|
+| `employee` | 個人班表顯示的人；當日班表用來標「我」 |
+| `activeTab` | `personal` / `on-duty`，由路由設定 |
+| `version` | 每次 `ensure()` 完成就加一。班表資料（`data`）是一般物件、不是響應式的，讀 `data` 的 getter 先讀 `version`，月份載入後才會重算 |
+| `now` / `today` | 時鐘，每 30 秒與回到前景時更新；「今天」標記、「現」名單、狀態列都跟著它 |
+| `offline`、`fatal` | 狀態列與頂端錯誤 |
+| `empInput`、`empError`、`empInvalid`、`suggestions` | 工號表單與自動完成 |
+
+**資料流**
 
 ```
-router '/personal/:empId?' → employee.routePersonal → personal.showEmployee → showPersonal (await ensure)
-                                                         └ renderPersonal → renderCalendar | renderWeek → renderSelectedDay + renderInsights
-router '/on-duty' → onDuty.showOnDuty → renderOnDuty (await ensure) → renderRoster ×2
-定時 30s / visibilitychange → refreshLive、checkPublished（有新版就 reload，否則載入今天月份並更新狀態列）
+router '/personal/:empId?' → activeTab = 'personal'；routePersonal → state.employee = 人
+                              personal 元件 $watch(employee) → go(本月) → await ensure → 設 month/selectedDate/view → getter 重算 → 樣板更新
+router '/on-duty'          → activeTab = 'on-duty'
+                              onDuty 元件 $watch(activeTab) → show() → load() → await ensure → 設 shown → getter 重算
+時鐘 / visibilitychange    → state.now；onDuty 在 followToday 時跟著換日；checkPublished（有新版就 reload）
 ```
+
+- 兩個分頁的載入都是「先 `await ensure`、再改狀態」，並用序號丟掉晚回來的舊請求，所以不會先畫出還沒載入的月份。
+- 留在 Alpine 外、直接操作 DOM 的部分：路由、手機格子高度量測（`sizeDays`）、滑動手勢、`showModal`／popover、ICS 下載。
 
 ## 3. 還沒處理、之後值得做的
 
-1. **`showPersonal` 沒有防過期 render**（當日班表有 `onDutyRun`）。render 時讀的是共用的 `month`，不會畫錯月份；但快速連續滑動時，可能先用還沒載入的月份畫一次，短暫出現整月「—」。
-2. **`data.records` 是扁平陣列**，`dayState` 每次都線性搜尋。一個月曆約 31 × 4,000 次比較，目前沒問題；要做跨年統計時再加索引。
-3. **SW 的 `SHELL` 與 `CACHE` 手動維護**。新增 `web/` 檔案時要記得改，之後若改用 Vite 打包可以自動產生。
-4. **規則分在兩處**：班別規則在 `shift-rules.mjs`，分類 `shiftCategory` 在 `schedule.js`。
-5. **`excel.test.mjs` 會跑 `data/` 裡的真實資料**，壞資料會讓 test 先失敗，錯誤訊息比 build 少。
-6. **統計（早／中／晚／N／休）、連續上班、下個休假日仍直接掃 `records`**，沒有走 `dayState`；也不計「未排」天數，月份排到一半時加總會少於該月天數。
-7. **前端沒有自動化 UI 測試**。重構時曾在暫存目錄用 jsdom 載入 `dist/` 跑過一遍，但沒有放進 repo。
+1. **`data.records` 是扁平陣列**，`dayState` 每次都線性搜尋。一個月曆約 31 × 4,000 次比較，目前沒問題；要做跨年統計時再加索引。
+2. **SW 的 `SHELL` 與 `CACHE` 手動維護**。新增 `web/` 檔案時要記得改，之後若改用 Vite 打包可以自動產生。
+3. **規則分在兩處**：班別規則在 `shift-rules.mjs`，分類 `shiftCategory` 在 `schedule.js`。
+4. **`excel.test.mjs` 會跑 `data/` 裡的真實資料**，壞資料會讓 test 先失敗，錯誤訊息比 build 少。
+5. **統計（早／中／晚／N／休）、連續上班、下個休假日仍直接掃 `records`**，沒有走 `dayState`；也不計「未排」天數，月份排到一半時加總會少於該月天數。
+6. **前端沒有自動化 UI 測試**。重構與改用 Alpine 時都在暫存目錄用 jsdom 載入 `dist/`，逐項比對改動前後的畫面輸出，但沒有放進 repo。
+7. **Alpine 運算式用 `new AsyncFunction` 執行**。GitHub Pages 沒有 CSP 所以沒問題；若之後加 CSP 禁止 `unsafe-eval`，要改用 Alpine 的 CSP 版本並把樣板裡的運算式改成元件方法。
 
 ## 4. 相依盤點
 
@@ -109,6 +125,7 @@ router '/on-duty' → onDuty.showOnDuty → renderOnDuty (await ensure) → rend
 | 套件 | 版本 | 來源 | 用途 | 備註 |
 |---|---|---|---|---|
 | `xlsx`（SheetJS 社群版） | 0.20.3 | `cdn.sheetjs.com` 的 tarball，不在 npm registry | 讀 xlsx／xlsm 與儲存格底色 | lockfile 記錄 sha512 integrity，CDN 上的檔案被換掉時安裝失敗；CDN 連不上時只能靠 CI 的 pnpm 快取。放在 `dependencies`，CI 的 `--prod` 只裝它。自動更新工具不會追蹤，升級步驟見 README。 |
+| `alpinejs` | 3.17.5（固定版本） | npm | 前端 DOM 管理；build 複製到 `dist/js/alpine.js` | 單一檔案、沒有其他相依（內含 `@vue/reactivity`），壓縮後 56 KB、gzip 約 20 KB。放在 `dependencies`，CI 的 `--prod` 會裝。lockfile 有 integrity。 |
 | `vite` | `^8.3.3`（lock 8.3.3） | npm | 只用在本機 `pnpm preview` | lockfile 50 個套件中有 49 個屬於它（多數是各平台的二進位檔，實際安裝約 19 個）。放在 `devDependencies`，CI 用 `--prod` 不安裝。 |
 
 **執行環境**
@@ -129,7 +146,8 @@ router '/on-duty' → onDuty.showOnDuty → renderOnDuty (await ensure) → rend
 
 ```
 scripts/build.mjs ─→ scripts/lib/excel.mjs ─→ scripts/lib/shift-rules.mjs
-                                           └→ xlsx
+                 │                         └→ xlsx
+                 └→（複製檔案）node_modules/alpinejs/dist/module.esm.min.js → dist/js/alpine.js
 test/excel.test.mjs ─→ scripts/lib/excel.mjs
                     └→ web/js/schedule.js        ← 前後端唯一的程式碼交會點
 test/schedule.test.mjs ─→ web/js/schedule.js
@@ -138,19 +156,19 @@ test/router.test.mjs ──→ web/js/router.js（用假的 window）
 
 ### 前端
 
-**第三方相依：無。**
+**第三方相依：只有 Alpine.js 3.17.5**，由 build 放進 `dist/js/alpine.js`，從網站本身提供。
 
-- 執行時不連外部網址，沒有 CDN。
+- 執行時不連外部網址，沒有 CDN；Alpine 也在 Service Worker 的 `SHELL` 裡，離線可用。
 - 沒有網頁字型，用的是系統字型堆疊。
 - 圖示裡的 Archivo Black 已轉成 SVG 路徑，不需要字型檔。
 
 **模組圖**（沒有循環相依）
 
 ```
-app.js ─┬→ employee.js ─→ personal.js ─┐
+app.js ─┬→ personal.js ─→ employee.js ─┐
         ├→ on-duty.js ─────────────────┤
         └──────────────────────────────┴→ context.js ─→ store.js, router.js
-   全部 ──→ schedule.js、dom.js（葉節點，不再 import 任何東西）
+   全部 ──→ alpine.js、schedule.js、dom.js（葉節點）
 theme.js：一般 <script>，在 <head> 同步執行，沒有 import
 sw.js：獨立執行，只靠 SHELL 清單知道有哪些檔
 ```
@@ -162,7 +180,7 @@ sw.js：獨立執行，只靠 SHELL 清單知道有哪些檔
 
 | 類別 | 項目 |
 |---|---|
-| 必要（沒有備援） | ES modules + top-level await、`Array.prototype.at`、`replaceChildren`、`ResizeObserver`、`Intl.DateTimeFormat` 的 `timeZone`／`formatToParts`、`fetch`、pointer events、`TextEncoder`、`Blob`＋`createObjectURL`（ICS）、`<datalist>`、`<input type="date">` |
+| 必要（沒有備援） | ES modules + top-level await、`Array.prototype.at`、Proxy／`AsyncFunction`（Alpine）、`ResizeObserver`、`Intl.DateTimeFormat` 的 `timeZone`／`formatToParts`、`fetch`、pointer events、`TextEncoder`、`Blob`＋`createObjectURL`（ICS）、`<datalist>`、`<input type="date">` |
 | 有備援 | `<dialog>.showModal`（沒有就用頁內表單）、popover（沒有就內嵌提示）、`AbortSignal.timeout`（沒有就不設逾時）、`navigator.share`（只在 iOS 主畫面 App 用）、Service Worker（沒有就不能離線）、`svh`／`dvh`（前面有 `100vh`）、`localStorage`（全部包在 try/catch 裡） |
 
 實際最低版本約為 Chrome 92、Safari 15.4、Firefox 90，取決於 top-level await 和 `Array.prototype.at`。

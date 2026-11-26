@@ -1,73 +1,64 @@
-// Employee ID entry: the inline form, the first-visit dialog, prefix autocomplete and the /personal route.
+// Employee ID entry: the inline form (x-data="employeeForm"), the first-visit dialog (x-data="employeeDialog"),
+// prefix autocomplete and the /personal route. Choosing a person sets $store.app.employee; the personal tab follows it.
+import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { employees, state, router, EMP_ID_KEY } from './context.js';
-import { element, notice } from './dom.js';
-import { showEmployee } from './personal.js';
+import { element } from './dom.js';
 
-// <datalist> filters by substring, so the list is rebuilt to hold only IDs that start with the typed text.
-function suggestEmployees(event) {
-    const typed = schedule.normalizeEmpId(event.target.value);
-    const matches = typed ? [...employees.values()].filter(person => person.empId.startsWith(typed)).sort((left, right) => left.empId.localeCompare(right.empId, undefined, { numeric: true })).slice(0, 10) : [];
-    element('empList').replaceChildren(...matches.map(person => {
-        const option = document.createElement('option');
-        option.value = person.empId;
-        option.label = person.name;
-        return option;
-    }));
+// <datalist> filters by substring, so the list holds only IDs that start with the typed text.
+function suggest(value) {
+    const typed = schedule.normalizeEmpId(value);
+    state.suggestions = typed ? [...employees.values()].filter(person => person.empId.startsWith(typed)).sort((left, right) => left.empId.localeCompare(right.empId, undefined, { numeric: true })).slice(0, 10) : [];
 }
-for (const id of ['empId', 'empDialogId']) element(id).addEventListener('input', suggestEmployees);
 
 function showEmployeeForm(error) {
     state.employee = null;
-    element('personalSchedule').hidden = true;
-    element('employeeForm').hidden = false;
-    notice('employeeError', error);
-    element('empId').toggleAttribute('aria-invalid', Boolean(error));
+    state.empError = error;
+    state.empInvalid = Boolean(error);
 }
 
 // Shows a known employee from the loaded months; an unknown ID keeps the form with an error.
 function selectEmployee(empId) {
     const selected = employees.get(empId);
-    element('empId').value = empId;
+    state.empInput = empId;
     if (!selected) {
         showEmployeeForm('此工號不在本次班表資料中，請確認工號。');
         return;
     }
-    element('empId').removeAttribute('aria-invalid');
-    notice('employeeError', '');
-    element('personalSchedule').hidden = false;
-    element('employeeForm').hidden = true;
+    state.empError = '';
+    state.empInvalid = false;
     try { localStorage.setItem(EMP_ID_KEY, empId); } catch (_) { }
-    showEmployee(selected);
+    state.employee = selected;
 }
 
-element('employeeForm').addEventListener('submit', event => {
-    event.preventDefault();
-    router.navigate(`/personal/${encodeURIComponent(schedule.normalizeEmpId(element('empId').value))}`, { replace: true });
-});
-element('clearEmployee').addEventListener('click', () => {
+export function clearEmployee() {
     try { localStorage.removeItem(EMP_ID_KEY); } catch (_) { }
     showEmployeeForm('');
-    element('empId').value = '';
+    state.empInput = '';
     router.navigate('/personal');
-    element('empId').focus();
-});
+    Alpine.nextTick(() => element('empId').focus());
+}
 
-const dialog = element('empDialog');
-element('empDialogForm').addEventListener('submit', event => {
-    event.preventDefault();
-    const empId = schedule.normalizeEmpId(element('empDialogId').value);
-    const error = element('empDialogError');
-    error.hidden = employees.has(empId);
-    if (!error.hidden) {
-        element('empDialogId').setAttribute('aria-invalid', 'true');
-        return;
+Alpine.data('employeeForm', () => ({
+    suggest() { suggest(state.empInput); },
+    submit() { router.navigate(`/personal/${encodeURIComponent(schedule.normalizeEmpId(state.empInput))}`, { replace: true }); }
+}));
+
+Alpine.data('employeeDialog', () => ({
+    value: '',
+    invalid: false,
+    suggest() { suggest(this.value); },
+    submit() {
+        const empId = schedule.normalizeEmpId(this.value);
+        this.invalid = !employees.has(empId);
+        if (this.invalid) return;
+        this.$root.close();
+        router.navigate(`/personal/${encodeURIComponent(empId)}`, { replace: true });
+    },
+    closed() {
+        if (!state.employee) element('empId').focus();
     }
-    dialog.close();
-    router.navigate(`/personal/${encodeURIComponent(empId)}`, { replace: true });
-});
-element('empDialogSkip').addEventListener('click', () => dialog.close());
-dialog.addEventListener('close', () => { if (!state.employee) element('empId').focus(); });
+}));
 
 // Only the first visit without a known employee asks in a dialog; later visits (e.g. after 清除工號) use the inline form.
 let asked = false;
@@ -82,7 +73,8 @@ export function routePersonal(empId) {
         }
         if (!asked) {
             asked = true;
-            notice('employeeError', '請輸入工號以檢視個人班表。');
+            state.empError = '請輸入工號以檢視個人班表。';
+            const dialog = element('empDialog');
             // Browsers without <dialog> fall back to the inline form.
             if (dialog.showModal) dialog.showModal();
             else element('empId').focus();

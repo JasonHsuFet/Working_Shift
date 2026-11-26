@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "alpinejs": "3.17.5",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {

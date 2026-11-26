@@ -108,12 +108,12 @@ web/                               網站原始檔，build 時整包複製到 di
   index.html, manifest.webmanifest 頁面（含 SVG 圖示 sprite）與 PWA 設定
   sw.js                            Service Worker（網路優先、離線備援），需放在站台根目錄
   css/style.css                    樣式
-  js/app.js                        外框：狀態列、來源提醒、分頁、路由對應
-  js/context.js                    啟動：舊 key 搬移、Service Worker、載入班表、共用狀態與路由器
-  js/personal.js                   個人班表：月曆／週列表、日期明細、統計、同班同事、年月選擇、ICS 匯出
-  js/on-duty.js                    當日班表：名單、篩選、日期切換、「現」每 30 秒更新
-  js/employee.js                   工號：表單、詢問視窗、自動完成、#/personal 路由
-  js/dom.js                        共用 DOM 小工具（建立節點、提示、日期標籤、滑動手勢）
+  js/app.js                        外框（Alpine 元件 page）：狀態列、來源提醒、分頁、路由對應、時鐘；啟動 Alpine
+  js/context.js                    啟動：舊 key 搬移、Service Worker、載入班表、共用狀態（Alpine store）與路由器
+  js/personal.js                   個人班表（Alpine 元件 personal）：月曆／週列表、日期明細、統計、同班同事、年月選擇、ICS 匯出
+  js/on-duty.js                    當日班表（Alpine 元件 onDuty）：名單、篩選、日期切換、「現」每 30 秒更新
+  js/employee.js                   工號：表單、詢問視窗（Alpine 元件）、自動完成、#/personal 路由
+  js/dom.js                        共用小工具（取元素、日期標籤、滑動手勢）
   js/schedule.js                   班表業務邏輯：當班判斷、班別分類與統計、值班分組、時間標籤、ICS
   js/store.js                      班表 JSON 按需下載與合併、檢查新版
   js/router.js                     hash 路由（navigo 風格 API）
@@ -132,7 +132,7 @@ package.json                       package 名稱為 not-shift（站名沿用 Wo
 ### 維護注意事項
 
 - 命名規則：檔名 kebab-case、以領域命名；瀏覽器端 `.js`（ES module），Node 端 `.mjs`；員工編號一律 `empId`；當日班表一律 `on-duty`；localStorage key 為 `noc.<名稱>`。
-- 瀏覽器端沒有打包工具，也沒有執行期依賴，`web/` 原樣部署。
+- 瀏覽器端沒有打包工具，`web/` 原樣部署。唯一的執行期依賴是 Alpine.js：`pnpm build` 把 `node_modules/alpinejs/dist/module.esm.min.js` 複製成 `dist/js/alpine.js`，不走 CDN。畫面結構寫在 `index.html` 的 Alpine 樣板，改 UI 時通常改樣板與元件的 getter，不再手動組 DOM。
 - 新增或搬移 `web/` 下的檔案時，更新 `web/sw.js` 的 `SHELL` 並調高 `CACHE` 版本號，否則已安裝的使用者離線時會拿到舊或不完整的檔案。
 - 程式註解用英文，介面文字用繁體中文。
 - `legacy:` 註解標記相容舊版的程式（`?empno=` 轉址、舊 localStorage key `noc-static-theme`／`nnoc-static-empId`／`nnoc-static-view` 搬到 `noc.*`），日後可移除；`ponytail:` 註解標記刻意簡化的已知限制。

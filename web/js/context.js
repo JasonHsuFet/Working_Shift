@@ -1,8 +1,9 @@
-// Boot and shared page state: legacy key migration, service worker, the loaded schedule store, the router and the state more than one view reads.
+// Boot and shared page state: legacy key migration, service worker, the loaded schedule store, the router and the Alpine store every view reads.
+import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { createStore } from './store.js';
 import { createRouter } from './router.js';
-import { element, notice } from './dom.js';
+import { element } from './dom.js';
 
 export const EMP_ID_KEY = 'noc.empId';
 export const VIEW_KEY = 'noc.view';
@@ -40,17 +41,34 @@ element('empId').disabled = false;
 element('employeeForm').querySelector('button').disabled = false;
 
 export const router = createRouter();
-// employee: the person on the personal tab (also highlighted in the on-duty roster); activeTab: 'personal' or 'on-duty'.
-export const state = { employee: null, activeTab: 'personal' };
+
+// Reactive page state. The schedule itself (thousands of records) stays a plain object; `version` goes up whenever
+// more months are merged into it, and every getter that reads `data` also reads `version` so it recomputes then.
+Alpine.store('app', {
+    employee: null, // the person on the personal tab, also marked in the on-duty roster
+    activeTab: 'personal',
+    version: 0,
+    fatal: '',
+    offline: !navigator.onLine || store.fromCache,
+    now: Date.now(), // moved on every 30 seconds and when the page comes back to the foreground
+    get today() { return schedule.taipeiDate(new Date(this.now)); },
+    empInput: '',
+    empError: '',
+    empInvalid: false,
+    suggestions: []
+});
+export const state = Alpine.store('app');
 
 export async function ensure(wanted) {
     try {
         await store.ensure(wanted);
-        notice('fatal', '');
+        state.fatal = '';
         return true;
     } catch (error) {
-        notice('fatal', `載入班表失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}`);
+        state.fatal = `載入班表失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}`;
         return false;
+    } finally {
+        state.version++;
     }
 }
 
