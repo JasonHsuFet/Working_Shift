@@ -1,9 +1,8 @@
-// Schedule business logic shared by the page and the tests: on-duty checks, categories, stats, roster grouping and ICS.
 export function normalizeEmpId(value) {
     return String(value || '').trim().replace(/^f/i, '').toUpperCase();
 }
 
-// Built once: constructing an Intl.DateTimeFormat costs far more than formatting with it.
+// Built once: creating an Intl.DateTimeFormat is far slower than using one.
 const taipeiParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
 
 export function taipeiDate(now = new Date()) {
@@ -12,17 +11,13 @@ export function taipeiDate(now = new Date()) {
     return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
-export function liveDate(selectedDate, today, followToday) {
-    return followToday ? today : selectedDate;
-}
-
 export function addDays(date, count) {
     const value = new Date(`${date}T00:00:00Z`);
     value.setUTCDate(value.getUTCDate() + count);
     return value.toISOString().slice(0, 10);
 }
 
-// `full` uses the hours actually worked (including support time) instead of the on-duty hours.
+// `full`: the hours actually worked (with support time) instead of the duty hours.
 export function bounds(record, shifts, full = false) {
     const shift = shifts[record.code];
     if (!shift || shift.rest || !shift.start || !shift.end) return null;
@@ -36,7 +31,7 @@ export function bounds(record, shifts, full = false) {
     return { start, end };
 }
 
-// Shifts last under a day, so only those starting today or yesterday can be running now; the rest are skipped unparsed.
+// Shifts last under a day, so only today's and yesterday's can be running now.
 export function currentRecords(data, now = new Date()) {
     const instant = now.getTime();
     const today = taipeiDate(now);
@@ -52,17 +47,16 @@ export function dayRecords(data, date) {
     return data.records.filter(record => record.date === date);
 }
 
-// `data` is one parsed month (build) or the months merged so far (page): { shifts, records, writtenDays: { 'YYYY-MM': n } }.
-// A month absent from writtenDays is unpublished (or not loaded yet). Inside it, a date past the date row is unwritten
-// for everyone; a written date without this person's code is none (they have no row that month, e.g. joined or left).
+// `data` is one parsed month (build) or the months merged so far (page). A month missing from writtenDays is unpublished
+// or not loaded yet; a date past its date row is unwritten for everyone; a written date without a code is none.
 export const DAY_STATE = { WORK: 'work', REST: 'rest', UNWRITTEN: 'unwritten', NONE: 'none', UNPUBLISHED: 'unpublished' };
 
-// True when the month's date row reaches this date, i.e. the day has been scheduled for everyone.
+// True when the month's date row reaches this date.
 export function isWritten(data, date) {
     return Number(date.slice(8)) <= (data.writtenDays[date.slice(0, 7)] ?? 0);
 }
 
-// "empId|date" -> record, rebuilt when more records are merged in (one record per person and date).
+// "empId|date" -> record, rebuilt when more records are merged in.
 const indexes = new WeakMap();
 function recordAt(data, empId, date) {
     let index = indexes.get(data.records);
@@ -85,7 +79,6 @@ export function shiftClass(shift) {
     return shift?.color ? `shift-${shift.color}` : '';
 }
 
-// Roster filter groups: morning = Mobile/TX 早班 + 日, afternoon = 中/小夜, night = 晚/大夜, n = N/N8; the rest follow the shift color from the build.
 export const shiftCategories = [['morning', '早班'], ['afternoon', '中班'], ['night', '晚班'], ['n', 'N班'], ['rest', '休假']];
 
 export function shiftCategory(shift) {
@@ -99,12 +92,10 @@ export function categoryCounts(records, shifts) {
     return counts;
 }
 
-// date -> shift for one person's records.
 export function shiftsByDate(records, shifts) {
     return new Map(records.map(record => [record.date, shifts[record.code]]));
 }
 
-// Consecutive working days ending on `date` (0 when that day is a rest day or has no record).
 export function workStreak(byDate, date) {
     let count = 0;
     for (let day = date; byDate.get(day) && !byDate.get(day).rest; day = addDays(day, -1)) count++;
@@ -131,13 +122,12 @@ export function timeLabel(shift) {
     return `${shift.start}–${shift.end}${nextDay}`;
 }
 
-// Personal view: show the hours actually worked, with the on-duty part when they differ.
 export function workTimeLabel(shift) {
     return shift.fullStart ? `${shift.fullStart}–${shift.fullEnd}（值班 ${shift.start}–${shift.end}）` : timeLabel(shift);
 }
 
-// Morning/afternoon/night and rest are one group each; N-type shifts keep their own group.
-// Groups follow the filter order, then start time; inside a group the base code comes before its variants (1 before M1), then code and name.
+// Morning, afternoon, night and rest are one group each; N-type shifts keep their own. Groups follow the filter order,
+// then start time; inside a group the base code comes before its variants (1 before M1).
 export function groupRoster(records, shifts, employees) {
     const order = shiftCategories.map(([id]) => id);
     const groups = new Map();
@@ -160,7 +150,6 @@ export function groupRoster(records, shifts, employees) {
     })).sort((left, right) => order.indexOf(shiftCategory(left.shift)) - order.indexOf(shiftCategory(right.shift)) || (left.shift.start || '99').localeCompare(right.shift.start || '99') || left.key.localeCompare(right.key));
 }
 
-// Month view covers the shown month; week view the Monday-Sunday week of the selected date.
 export function exportRange(view, month, selectedDate) {
     const from = view === 'week' ? weekStart(selectedDate) : `${month}-01`;
     return { from, to: view === 'week' ? addDays(from, 6) : `${month}-31`, suffix: view === 'week' ? `${from}_${addDays(from, 6)}` : month };

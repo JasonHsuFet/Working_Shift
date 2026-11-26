@@ -1,17 +1,16 @@
-// Small helpers shared by the views.
 export const element = id => document.getElementById(id);
 
 const longDate = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'long', day: 'numeric', weekday: 'long' });
 export const dateLabel = date => longDate.format(new Date(`${date}T00:00:00+08:00`));
 
-// Remembers the last result of a getter. Alpine re-runs a getter for every binding that reads it, so a getter used by
-// several bindings would redo the same work; `key` must include every reactive value the result depends on.
+// Caches a getter's last result: Alpine re-runs a getter for every binding that reads it.
+// `key` must cover every reactive value the result depends on.
 export function memo() {
     let last = null;
     return (key, compute) => (last?.key === key ? last.value : (last = { key, value: compute() }).value);
 }
 
-// A horizontal swipe (touch, pen or mouse drag) does what the previous/next buttons do; drags in inputs and dialogs are ignored.
+// A horizontal swipe (touch, pen or mouse) calls previous/next. Drags that start in an input or dialog are ignored.
 export function onSwipe(target, previous, next) {
     let start = null;
     target.addEventListener('pointerdown', event => {

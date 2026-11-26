@@ -1,6 +1,6 @@
 // Performance profile of a served build: cold load, then bursts of fast interactions.
 // node e2e/perf.mjs [baseURL ...] [--runs=3] [--cpu=1,4]   (default http://localhost:4173, i.e. `pnpm preview`)
-// Several URLs are profiled side by side, e.g. an older build on another port. Prints medians; asserts nothing.
+// Several URLs are profiled side by side (e.g. an older build on another port). Prints medians; asserts nothing.
 import { chromium } from '@playwright/test';
 
 const args = process.argv.slice(2);
@@ -14,8 +14,7 @@ const NOW = new Date('2026-11-26T10:00:00+08:00');
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const p95 = values => [...values].sort((a, b) => a - b)[Math.min(values.length - 1, Math.ceil(values.length * 0.95) - 1)];
 
-// Runs in the page: helpers shared by the scenarios, installed before the site's own scripts and before page.clock,
-// which fakes `performance` and `requestAnimationFrame`; the real ones are kept as __perf / __raf for measuring.
+// Runs in the page before page.clock, which fakes `performance` and `requestAnimationFrame`; the real ones stay as __perf / __raf.
 function pageHelpers() {
     window.__perf = performance;
     window.__raf = requestAnimationFrame.bind(window);
@@ -31,7 +30,7 @@ function pageHelpers() {
         }
     };
     window.__text = id => document.getElementById(id).textContent.replace(/\s+/g, ' ').trim();
-    // Clicks, then waits until `changed()` holds and one more frame is painted; returns the latency in ms.
+    // Latency in ms from the click until `changed()` holds and one more frame is painted.
     window.__step = async (click, changed) => {
         const start = window.__perf.now();
         click();

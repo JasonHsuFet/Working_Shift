@@ -1,4 +1,3 @@
-// Reads the Excel sources: the 工號/NNOC班別 lookups and the month sheets.
 import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
@@ -13,7 +12,7 @@ function text(value) {
 }
 
 // ponytail: sheetRows cap, since some sheets claim 1,048,576 used rows; raise it if staff tables ever pass 1000 rows
-// cellStyles exposes each cell's fill as cell.s, which is how leaders are marked.
+// cellStyles exposes each cell's fill (cell.s), which marks leaders.
 export function readWorkbook(file) {
     return XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000, cellStyles: true });
 }
@@ -22,7 +21,7 @@ export function sheetRows(workbook, name) {
     return XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '', raw: true });
 }
 
-// "row,col" keys of leader-orange cells, shifted to the same origin as the arrays from sheetRows().
+// "row,col" keys of leader-orange cells, in the same coordinates as sheetRows().
 export function sheetLeaders(workbook, name) {
     const sheet = workbook.Sheets[name];
     const origin = XLSX.utils.decode_range(sheet['!ref']).s;
@@ -71,9 +70,8 @@ export function readLookups(workbook) {
     return { ids, defs, warnings };
 }
 
-// Day header = the row holding a run 1,2,3,…; name column sits left of day 1, the Total column left of that.
-// A run of 28+ is a full month; a shorter run (a month still being written) counts only when "Total" heads the
-// Total column in that row or the row above, so a stray 1 in the header area is not taken for day 1.
+// The date row holds a run 1, 2, 3…; the name column is left of day 1 and Total left of that. A run under 28
+// (a month still being written) counts only with "Total" above or beside it, so a stray 1 is not taken for day 1.
 function findDayHeader(rows) {
     for (const [index, row] of rows.slice(0, 10).entries()) {
         for (let col = 2; col < row.length; col++) {
@@ -86,8 +84,7 @@ function findDayHeader(rows) {
     return null;
 }
 
-// Returns a month in the shape the page uses as its data: dates, shifts, employees, records, warnings, and
-// writtenDays { 'YYYY-MM': n } = how many days the date row reaches; later days are unwritten, not an error.
+// Returns a month in the same shape the page uses. writtenDays { 'YYYY-MM': n } is how far the date row reaches.
 export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set()) {
     const header = findDayHeader(rows);
     if (!header) return null;
@@ -105,7 +102,7 @@ export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set(
     for (let index = header.index + 1; index < rows.length; index++) {
         const row = rows[index];
         const name = text(row[nameCol]);
-        // summary tables below the staff rows have no Total and start with a shift-code row ("1")
+        // The summary block below the staff has no Total and starts with a shift-code row ("1").
         if (text(row[totalCol]) === '' && Object.hasOwn(SHIFT_TYPES, name)) break;
         if (!name || !written.some((_, day) => text(row[header.dayCol + day]))) continue;
         const empId = ids.get(name);

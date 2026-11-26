@@ -1,5 +1,4 @@
-// Page shell (x-data="page" on <body>): header link, source warnings, connection status, tabs, timers and routes.
-// Each tab is its own Alpine component; they are registered by the imports below, then Alpine starts and the route resolves.
+// The imports register each tab's Alpine component; Alpine starts before the first route resolves.
 import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { store, data, months, state, router, ensure, hasDate } from './context.js';
@@ -14,7 +13,7 @@ if (location.search) {
 }
 
 Alpine.data('page', () => ({
-    // Every year with a published month has its workbook in data/; fall back to the latest one when this year has none yet.
+    // This year's workbook, or the latest one while this year has no published month.
     excelHref: (() => {
         const thisYear = state.today.slice(0, 4);
         return `./data/All_${months.some(month => month.startsWith(thisYear)) ? thisYear : months.at(-1).slice(0, 4)}.xlsx`;
@@ -22,7 +21,7 @@ Alpine.data('page', () => ({
     warnings: data.warnings.length ? `來源資料提醒：${data.warnings.join('；')}` : '',
 
     init() {
-        // After the first render, so the notice is no longer [hidden]. Browsers without popover (Safari < 17) keep it as the inline notice.
+        // After the first render has removed [hidden]. Without popover support (Safari < 17) it stays an inline notice.
         this.$nextTick(() => {
             const warnings = this.$refs.warnings;
             if (!this.warnings || !warnings.showPopover) return;
@@ -32,7 +31,7 @@ Alpine.data('page', () => ({
     },
 
     get status() {
-        void state.version; // today's month may load later (e.g. after midnight into a new month)
+        void state.version; // recompute when more months load
         const outOfRange = !hasDate(state.today);
         const unwritten = !outOfRange && !schedule.isWritten(data, state.today);
         return {
@@ -41,7 +40,7 @@ Alpine.data('page', () => ({
         };
     },
 
-    // iOS home-screen apps keep in-scope links inside the app with no way back; share the URL so a browser opens it. Other platforms use the plain link.
+    // iOS home-screen apps open in-scope links inside the app with no way back, so share the URL to open it in a browser.
     openExcel(event) {
         if (navigator.standalone !== true || !navigator.share) return;
         event.preventDefault();
@@ -51,13 +50,12 @@ Alpine.data('page', () => ({
 
 const refreshStatus = () => { state.offline = !navigator.onLine || store.fromCache; };
 
-// Reloads when a newer schedule was published; otherwise just refreshes the connection status.
 async function checkPublished() {
     if (await store.isOutdated()) {
         location.reload();
         return;
     }
-    // After midnight into a new month, today's month may not be loaded yet; it is needed to tell unwritten from scheduled.
+    // After midnight into a new month, its data is needed to tell unwritten days from scheduled ones.
     await ensure([state.today.slice(0, 7)]);
     refreshStatus();
 }
@@ -69,12 +67,11 @@ router
         state.activeTab = 'personal';
         routePersonal(empId);
     })
-    // The on-duty component shows its date when activeTab turns to 'on-duty'.
+    // onDuty watches activeTab and loads its date.
     .on('/on-duty', () => { state.activeTab = 'on-duty'; })
     .notFound(() => router.navigate('/personal', { replace: true }))
     .resolve();
 
-// The clock drives today's live roster and every "today" mark; the on-duty date follows it across midnight.
 const tick = () => {
     state.now = Date.now();
     state.today = schedule.taipeiDate(new Date(state.now));
@@ -85,6 +82,6 @@ window.addEventListener('offline', refreshStatus);
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
     tick();
-    // An installed app resumes without reloading, so pick up a newly published schedule here.
+    // An installed app resumes without reloading, so check for a new schedule here.
     checkPublished();
 });

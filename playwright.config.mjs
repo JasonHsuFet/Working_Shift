@@ -1,7 +1,6 @@
-// Browser tests (pnpm test:e2e): builds the site, serves dist/ and drives it in headless Chromium at desktop and phone sizes.
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4174; // apart from the default preview port, so a running `pnpm preview` does not clash
+const PORT = 4174; // not the preview default, so a running `pnpm preview` does not clash
 
 export default defineConfig({
     testDir: 'e2e',
@@ -11,7 +10,7 @@ export default defineConfig({
         baseURL: `http://localhost:${PORT}`,
         timezoneId: 'Asia/Taipei',
         locale: 'zh-TW',
-        // Each test starts from the network, not from a service worker cache left by another test.
+        // No service worker cache carried between tests.
         serviceWorkers: 'block',
         trace: 'retain-on-failure'
     },

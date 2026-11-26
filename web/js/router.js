@@ -1,4 +1,4 @@
-// Navigo-style hash router: on('/path/:param?', handler), notFound(handler), navigate(path, { replace }), resolve().
+// Hash router with a Navigo-style API.
 export function createRouter() {
     const routes = [];
     let fallback = () => { };
@@ -18,7 +18,7 @@ export function createRouter() {
         },
         navigate(path, { replace = false } = {}) {
             if (replace) history.replaceState(null, '', `#${path}`);
-            // Setting the same hash fires no hashchange, so resolve directly then too.
+            // Setting the same hash fires no hashchange.
             if (replace || location.hash === `#${path}`) router.resolve();
             else location.hash = path;
         },

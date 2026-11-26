@@ -1,7 +1,6 @@
-// Published schedule: downloads months on demand and merges them into one data set.
 const TIMEOUT = 30000;
 
-// Loads data/index.json and the current month (or the latest one when today is not published).
+// Loads index.json and the current month, or the latest one when today is not published.
 export async function createStore(today) {
     const loadedMonths = new Map();
     const shiftDefinedIn = {};
@@ -14,7 +13,7 @@ export async function createStore(today) {
         return response.json();
     }
 
-    // Each month is fetched once and merged into `data`; a later month wins when two define the same shift code.
+    // Each month is fetched once and merged into `data`; a later month's shift definition wins.
     function loadMonth(key) {
         if (!store.months.includes(key)) return Promise.resolve();
         if (!loadedMonths.has(key)) {
@@ -38,7 +37,7 @@ export async function createStore(today) {
         return loadedMonths.get(key);
     }
 
-    // Loads the given months, plus the months next to them so lookups can cross a month boundary. Throws when a wanted month fails.
+    // Also loads the neighbouring months, so streaks and weeks can cross a month boundary. Throws only for a wanted month.
     async function ensure(wanted) {
         const { months } = store;
         const keys = wanted.filter(key => months.includes(key));

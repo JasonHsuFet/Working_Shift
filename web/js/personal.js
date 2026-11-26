@@ -1,23 +1,21 @@
-// Personal tab (x-data="personal"): one employee's month calendar or week list, the selected day, stats, colleagues, the period picker and ICS export.
 import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { store, data, months, employees, state, ensure, hasDate, VIEW_KEY } from './context.js';
 import { element, dateLabel, memo, onSwipe } from './dom.js';
 import { clearEmployee } from './employee.js';
 
-// The period is page state only: every visit opens on the current month, so a saved home-screen URL never pins an old period.
-// The month/week view is a preference and is remembered.
+// Only the month/week view is remembered; the period always opens on the current month.
 function storedView() {
     try { return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'month'; } catch (_) { return 'month'; }
 }
-// Keeps the selected date inside the shown month: today when it is in that month, otherwise the 1st.
+// Keeps the selected date inside the month: today if it is in that month, else the 1st.
 const dateIn = (month, date, today) => (date.startsWith(month) ? date : today.startsWith(month) ? today : `${month}-01`);
 const monthDay = date => `${Number(date.slice(5, 7))}/${Number(date.slice(8))}`;
 const weekday = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', weekday: 'short' });
 const weekdayLabel = date => weekday.format(new Date(`${date}T00:00:00+08:00`));
 const UNWRITTEN = schedule.DAY_STATE.UNWRITTEN;
 
-// On phones, measure the cell height a six-week month gets from the free height, so every month uses it and fits on screen.
+// On phones every month uses the cell height a six-week month gets from the free height, so it always fits on screen.
 const phone = matchMedia('(max-width: 32.5rem)'); // same breakpoint as style.css
 function sizeDays() {
     const calendar = element('calendar');
@@ -34,30 +32,28 @@ Alpine.data('personal', () => {
         month: store.baseMonth,
         selectedDate: dateIn(store.baseMonth, '', state.today),
         view: storedView(),
-        // The period last asked for. It changes at once, while month/selectedDate/view follow when its months have loaded,
-        // so quick repeated taps or swipes add up (three taps on ‹ go back three months) instead of repeating the first one.
+        // The period last asked for. It changes at once while month/selectedDate/view wait for the download,
+        // so quick repeated taps add up (three taps on ‹ go back three months).
         wanted: null,
         pickerYear: '',
         pickerOpen: false,
         run: 0,
 
         init() {
-            // A different person starts again from the base month and the remembered view.
+            // A different person starts again from the base month.
             this.$watch('$store.app.employee', person => {
                 if (person) this.go(store.baseMonth, '', storedView());
             });
             onSwipe(this.$root, () => this.step(-1), () => this.step(1));
-            // Grow the page by the colleagues card (plus its gap) so the mobile calendar keeps the same height.
+            // Grow the page by the colleagues card so the phone calendar keeps its height.
             new ResizeObserver(() => {
                 const colleagues = this.$refs.colleagues;
                 const height = colleagues.offsetParent ? colleagues.getBoundingClientRect().bottom - this.$refs.dayDetail.getBoundingClientRect().bottom : 0;
                 document.body.style.setProperty('--colleagues-height', `${height}px`);
                 sizeDays();
             }).observe(this.$refs.colleagues);
-            // Cell height is a pure function of (width, svh): recompute on every resize, not just lazily at the next
-            // month switch, so it can never get stuck at a height that no longer applies. A phone's toolbar hiding or
-            // showing changes innerHeight but not svh, so a real device remeasures to the same value; a genuine height
-            // change (a resized desktop window, split screen) is picked up right away. One measurement per frame.
+            // The height depends only on width and svh, so remeasuring on every resize (once per frame) is safe:
+            // a phone toolbar showing or hiding gives the same value.
             let resizeFrame = null;
             window.addEventListener('resize', () => {
                 if (resizeFrame) return;
@@ -65,7 +61,7 @@ Alpine.data('personal', () => {
             });
         },
 
-        // Loads the months a period needs (and their neighbours), then shows it; an older request that finishes late is dropped.
+        // Shows a period once its months have loaded; an older request that finishes late is dropped.
         async go(month, date, view = this.target.view) {
             date = dateIn(month, date, state.today);
             this.wanted = { month, date, view };
@@ -99,7 +95,7 @@ Alpine.data('personal', () => {
         get stepTitles() { return this.isWeek ? ['上一週', '下一週'] : ['上個月', '下個月']; },
         get todayPublished() { return hasDate(state.today); },
 
-        // The hidden view draws nothing, so stepping through weeks does not keep redrawing the month grid (and back).
+        // The hidden view returns nothing, so stepping in one view never redraws the other.
         get offset() { return this.isWeek ? 0 : (new Date(`${this.month}-01T00:00:00Z`).getUTCDay() + 6) % 7; },
         get calendarDays() {
             if (this.isWeek) return [];
@@ -161,13 +157,12 @@ Alpine.data('personal', () => {
                 time: shift && schedule.workTimeLabel(shift)
             };
         },
-        // Counts for the shown range and same-shift colleagues relative to the selected day.
         get insights() {
             const { isWeek, month, selectedDate } = this;
             const empId = this.person.empId;
             return cached.insights(`${state.version}|${empId}|${isWeek}|${month}|${selectedDate}`, () => this.insightsFor(empId, isWeek, month, selectedDate));
         },
-        // Plain values in, so the loops over every loaded record never touch Alpine's reactive proxies.
+        // Plain values in, so the loops over all records never touch Alpine's reactive proxies.
         insightsFor(empId, isWeek, month, selectedDate) {
             const start = schedule.weekStart(selectedDate);
             const [from, to, scope] = isWeek ? [start, schedule.addDays(start, 6), '本週'] : [`${month}-01`, `${month}-31`, '本月'];
@@ -219,7 +214,6 @@ Alpine.data('personal', () => {
             if (hasDate(state.today)) this.go(state.today.slice(0, 7), state.today);
         },
 
-        // The period title opens a year/month picker.
         get pickerMonths() {
             if (!this.pickerOpen) return [];
             return Array.from({ length: 12 }, (_, index) => {
@@ -231,7 +225,7 @@ Alpine.data('personal', () => {
         get lastYear() { return months.at(-1).slice(0, 4); },
         openPicker() {
             const picker = this.$refs.picker;
-            // Browsers without <dialog> keep the old tap-to-return behaviour.
+            // No <dialog> support: jump to today instead.
             if (!picker.showModal) return this.goCurrent();
             this.pickerYear = this.month.slice(0, 4);
             this.pickerOpen = true;

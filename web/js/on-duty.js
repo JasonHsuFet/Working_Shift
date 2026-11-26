@@ -1,4 +1,3 @@
-// On-duty tab (x-data="onDuty"): one day's roster with category filters, date controls and the live 'now' view of today.
 import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { data, employees, state, ensure, hasDate } from './context.js';
@@ -7,9 +6,7 @@ import { dateLabel, memo, onSwipe } from './dom.js';
 const categoryLabel = Object.fromEntries(schedule.shiftCategories);
 const isDate = date => /^\d{4}-\d{2}-\d{2}$/.test(date);
 const clock = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', timeStyle: 'short' });
-// Getters that read `data` start with `void state.version` so Alpine recomputes them when more months load.
-
-// Roster groups in the shape the template draws; `me` is the empId of the person on the personal tab.
+// `me`: empId of the person on the personal tab, marked in the roster.
 function rosterGroups(records, me) {
     return schedule.groupRoster(records, data.shifts, employees).map(({ key, shift, records: group }) => ({
         key,
@@ -26,10 +23,10 @@ Alpine.data('onDuty', () => {
         filters: [['now', '目前值班', '現'], ['', '全部班別', '全'], ...schedule.shiftCategories.map(([id, label]) => [id, label, label[0]])]
             .map(([id, label, short]) => ({ id, label, short, cat: id || 'all' })),
         range: data.range,
-        date: state.today, // the date input
-        shown: '', // the date drawn: set once its month has loaded, so a slow download never shows a half-loaded day
+        date: state.today, // the date input's value
+        shown: '', // the date drawn, set once its month has loaded
         filter: 'now',
-        followToday: true, // the date moves along with today (midnight while open, the 今天 button)
+        followToday: true, // the date follows today across midnight
         run: 0,
 
         init() {
@@ -48,7 +45,7 @@ Alpine.data('onDuty', () => {
             void state.version;
             return hasDate(this.shown) && schedule.isWritten(data, this.shown);
         },
-        // The 'now' filter only makes sense for today, once its date is scheduled.
+        // 'now' applies only to today, once it is scheduled.
         get live() { return this.written && this.shown === state.today; },
         get label() {
             if (!isDate(this.shown)) return '';
@@ -78,7 +75,7 @@ Alpine.data('onDuty', () => {
             if (this.filter === 'now') return this.unknown.length ? '部分班別時間未定義；以下僅列已知時段的值班人員。' : '';
             return this.written ? '' : hasDate(this.shown) ? '此日期尚未排班。' : '此日期不在已發布資料期間。';
         },
-        // Nothing is drawn while the tab is hidden, so loading months or the clock does not keep redrawing it.
+        // Empty while the tab is hidden, so loads and clock ticks do not redraw it.
         get groups() {
             if (state.activeTab !== 'on-duty') return [];
             const { filter, records, current } = this;
@@ -93,7 +90,7 @@ Alpine.data('onDuty', () => {
         },
         get unknownGroups() { return state.activeTab === 'on-duty' ? rosterGroups(this.unknown, state.employee?.empId) : []; },
 
-        // Loads the month of the input's date, then draws it; an older request that finishes late is dropped.
+        // An older request that finishes late is dropped.
         async load() {
             const date = this.date;
             const run = ++this.run;
@@ -103,7 +100,7 @@ Alpine.data('onDuty', () => {
             if (!this.live && this.filter === 'now') this.filter = '';
         },
         show() {
-            this.date = schedule.liveDate(this.date, state.today, this.followToday);
+            if (this.followToday) this.date = state.today;
             this.load();
         },
         picked() {

@@ -1,4 +1,4 @@
-// Extracts every month sheet of data/All_YYYY.xlsx into dist/data/YYYY-MM.json, copies the workbooks for download, the SPA (web/) and Alpine.js into dist/.
+// data/All_YYYY.xlsx -> dist/data/YYYY-MM.json and index.json, plus the workbooks, web/ and Alpine.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -30,7 +30,7 @@ function build() {
             if (months.includes(key)) throw new Error(`${key} 重複出現在多個檔案`);
             months.push(key);
             data.warnings.forEach(warning => console.warn(`warning: ${warning}`));
-            // Build log only: a short date row is a month still being written, not something every visitor needs to see.
+            // Build log only: a month still being written is expected.
             if (data.writtenDays[key] < data.dates.length) console.warn(`warning: ${key} 日期欄只寫到第 ${data.writtenDays[key]} 天，之後的日期顯示為未排班`);
             fs.writeFileSync(path.join(DIST, 'data', `${key}.json`), JSON.stringify(data));
             console.log(`${file} ${sheet} -> data/${key}.json (${data.employees.length} 人, ${data.records.length} 筆)`);
@@ -39,7 +39,7 @@ function build() {
     if (!months.length) throw new Error('data/ 沒有任何 All_YYYY.xlsx 月份班表');
     fs.writeFileSync(path.join(DIST, 'data', 'index.json'), JSON.stringify({ months: months.sort(), generatedAt: new Date().toISOString() }));
     fs.cpSync(path.join(ROOT, 'web'), DIST, { recursive: true });
-    // Served from the site itself (no CDN), so the page works offline and the version is pinned by pnpm-lock.yaml.
+    // Served from the site (no CDN): works offline, version pinned by pnpm-lock.yaml.
     fs.copyFileSync(path.join(ROOT, 'node_modules/alpinejs/dist/module.esm.min.js'), path.join(DIST, 'js/alpine.js'));
 }
 

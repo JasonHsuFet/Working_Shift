@@ -1,4 +1,3 @@
-// Boot and shared page state: legacy key migration, service worker, the loaded schedule store, the router and the Alpine store every view reads.
 import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { createStore } from './store.js';
@@ -42,15 +41,15 @@ element('employeeForm').querySelector('button').disabled = false;
 
 export const router = createRouter();
 
-// Reactive page state. The schedule itself (thousands of records) stays a plain object; `version` goes up whenever
-// more months are merged into it, and every getter that reads `data` also reads `version` so it recomputes then.
+// The schedule (thousands of records) stays a plain object, outside Alpine's reactivity. `version` goes up when
+// months are merged into it, and every getter that reads `data` also reads `version`.
 Alpine.store('app', {
-    employee: null, // the person on the personal tab, also marked in the on-duty roster
+    employee: null, // the person on the personal tab
     activeTab: 'personal',
     version: 0,
     fatal: '',
     offline: !navigator.onLine || store.fromCache,
-    // The clock: moved every 30 seconds and when the page comes back to the foreground (see app.js).
+    // Ticked every 30 seconds and on resume (app.js).
     now: Date.now(),
     today: schedule.taipeiDate(),
     empInput: '',
@@ -70,7 +69,7 @@ export async function ensure(wanted) {
         state.fatal = `載入班表失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}`;
         return false;
     } finally {
-        // Only when a month was actually merged in: every getter that reads `data` recomputes on it.
+        // Only when a month was actually merged in.
         if (data.records.length !== count) state.version++;
     }
 }

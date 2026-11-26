@@ -1,5 +1,4 @@
-// Employee ID entry: the inline form (x-data="employeeForm"), the first-visit dialog (x-data="employeeDialog"),
-// prefix autocomplete and the /personal route. Choosing a person sets $store.app.employee; the personal tab follows it.
+// Choosing a person sets $store.app.employee; the personal tab watches it.
 import Alpine from './alpine.js';
 import * as schedule from './schedule.js';
 import { employees, state, router, EMP_ID_KEY } from './context.js';
@@ -17,7 +16,6 @@ function showEmployeeForm(error) {
     state.empInvalid = Boolean(error);
 }
 
-// Shows a known employee from the loaded months; an unknown ID keeps the form with an error.
 function selectEmployee(empId) {
     const selected = employees.get(empId);
     state.empInput = empId;
@@ -60,7 +58,7 @@ Alpine.data('employeeDialog', () => ({
     }
 }));
 
-// Only the first visit without a known employee asks in a dialog; later visits (e.g. after 清除工號) use the inline form.
+// Only the first visit without a known employee gets the dialog; later ones (e.g. after 清除工號) use the inline form.
 let asked = false;
 export function routePersonal(empId) {
     if (!empId) {
@@ -75,7 +73,7 @@ export function routePersonal(empId) {
             asked = true;
             state.empError = '請輸入工號以檢視個人班表。';
             const dialog = element('empDialog');
-            // Browsers without <dialog> fall back to the inline form.
+            // No <dialog> support: use the inline form.
             if (dialog.showModal) dialog.showModal();
             else element('empId').focus();
         }

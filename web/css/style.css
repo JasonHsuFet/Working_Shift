@@ -46,7 +46,7 @@
     --error-bg: #fff0f0;
     --error-ink: #94252d;
     color-scheme: light;
-    /* 系統字，不下載網頁字型；拉丁字型在前，避免英數被中文字型的拉丁字符取代 */
+    /* System fonts only; Latin fonts first, so letters and digits do not take the CJK font's Latin glyphs. */
     font-family: -apple-system, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: var(--ink);
     background: var(--page);
@@ -256,10 +256,10 @@ dialog input { width: 100%; margin-top: var(--space-lg); }
     .masthead, main { width: 100%; }
     main { flex: 1; display: flex; flex-direction: column; padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom, 0rem)); }
     #personal:not([hidden]), #personalSchedule:not([hidden]), .calendar-panel { flex: 1; display: flex; flex-direction: column; }
-    /* Month view: every cell is as tall as a six-week month's cells in the free height (measured in personal.js), and the grid only has the rows the month needs. */
+    /* Month view: cells take the height measured in personal.js, and the grid has only the rows the month needs. */
     .calendar-panel.month { flex: none; }
     .calendar:not([hidden]) { grid-auto-rows: var(--day-height, 2.5rem); }
-    /* Measured against the toolbar-expanded height (svh) so a toolbar showing or hiding while scrolling never resizes the cells. */
+    /* Measured against svh, so a toolbar showing or hiding never resizes the cells. */
     body.measuring { min-height: calc(100svh + var(--colleagues-height, 0rem)); }
     .measuring .calendar-panel { flex: 1; }
     .measuring .calendar-panel > .calendar { flex: 1; grid-template-rows: repeat(6, minmax(2.5rem, 1fr)); }

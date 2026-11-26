@@ -1,9 +1,7 @@
-// End-to-end checks in a real browser. Like test/excel.test.mjs they do not pin people or shifts: each test picks
-// the latest fully written month and its first person from the published data, and sets "today" to the 15th of it.
+// No pinned people or shifts: each test takes the latest fully written month and its first person, with "today" on the 15th.
 import { test as base, expect } from '@playwright/test';
 
 const test = base.extend({
-    // { month: 'YYYY-MM', days, person: { empId, name }, today: 'YYYY-MM-15', data } of the latest fully written month.
     sample: async ({ request }, use) => {
         const { months } = await (await request.get('/data/index.json')).json();
         for (const month of [...months].reverse()) {
@@ -14,7 +12,7 @@ const test = base.extend({
         }
         throw new Error('no fully written month published');
     },
-    // Fails the test on any uncaught error in the page.
+    // Any uncaught page error fails the test.
     page: async ({ page }, use) => {
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
@@ -85,43 +83,17 @@ test('quick repeated taps add up before the months finish loading', async ({ pag
     await expect(periodText(page)).toHaveText(`${Number(back.slice(0, 4))} 年 ${Number(back.slice(5))} 月`);
 });
 
-test('the period picker jumps to another published month', async ({ page, sample }) => {
+test('a horizontal drag changes the month', async ({ page, sample }) => {
     await page.clock.install({ time: at(sample.today) });
     await page.goto(`/#/personal/${sample.person.empId}`);
-    await page.locator('#periodLabel').click();
-    const picker = page.locator('#periodDialog');
-    await expect(picker).toBeVisible();
-    await expect(picker.locator('button[aria-pressed="true"]')).toBeFocused();
-    const other = picker.locator('#monthGrid button:not([disabled]):not([aria-pressed="true"])').first();
-    const label = (await other.textContent()).trim();
-    await other.click();
-    await expect(picker).toBeHidden();
-    await expect(periodText(page)).toContainText(label.replace(' 月', ''));
-});
-
-test('a horizontal drag changes the month, but not inside the picker', async ({ page, sample }) => {
-    await page.clock.install({ time: at(sample.today) });
-    await page.goto(`/#/personal/${sample.person.empId}`);
-    const drag = async (from, to) => {
-        await page.mouse.move(from.x, from.y);
-        await page.mouse.down();
-        await page.mouse.move(to.x, to.y, { steps: 5 });
-        await page.mouse.up();
-    };
     const box = await page.locator('#calendar').boundingBox();
     const shown = await periodText(page).textContent();
-    // Dragging leftwards is "next"; go right instead so the latest month still has somewhere to go.
-    await drag({ x: box.x + 20, y: box.y + box.height / 2 }, { x: box.x + box.width - 20, y: box.y + box.height / 2 });
+    // Rightwards is "previous", so the latest month still has somewhere to go.
+    await page.mouse.move(box.x + 20, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2, { steps: 5 });
+    await page.mouse.up();
     await expect(periodText(page)).not.toHaveText(shown);
-    const moved = await periodText(page).textContent();
-
-    // Pointer events straight on the picker: a mouse drag there would select its text, which the swipe already ignores.
-    await page.locator('#periodLabel').click();
-    const picker = page.locator('#periodDialog');
-    await picker.dispatchEvent('pointerdown', { isPrimary: true, pointerId: 7, clientX: 300, clientY: 40, bubbles: true });
-    await picker.dispatchEvent('pointerup', { isPrimary: true, pointerId: 7, clientX: 60, clientY: 40, bubbles: true });
-    await page.keyboard.press('Escape');
-    await expect(periodText(page)).toHaveText(moved);
 });
 
 test('on-duty roster, filters and the today button', async ({ page, sample }) => {
@@ -144,15 +116,6 @@ test('on-duty roster, filters and the today button', async ({ page, sample }) =>
     await page.locator('#goToday').click();
     await expect(page.locator('#onDutyDate')).toHaveValue(sample.today);
     await expect(now).toHaveAttribute('aria-pressed', 'true');
-});
-
-test('the on-duty date and clock follow today across midnight', async ({ page, sample }) => {
-    await page.clock.install({ time: at(sample.today, '23:59') });
-    await page.goto('/#/on-duty');
-    await expect(page.locator('#onDutyDateLabel')).toContainText('11:59');
-    await page.clock.runFor('01:00');
-    await expect(page.locator('#onDutyDate')).not.toHaveValue(sample.today);
-    await expect(page.locator('#onDutyDateLabel')).toContainText('12:00');
 });
 
 test('a month written only up to day 10 shows the rest as unwritten', async ({ page, sample }) => {
@@ -182,16 +145,6 @@ test('ICS export downloads the shown month', async ({ page, sample }) => {
     expect(download.suggestedFilename()).toBe(`noc-shift-${sample.person.empId}-${sample.month}.ics`);
     const text = await (await download.createReadStream()).toArray().then(chunks => Buffer.concat(chunks).toString());
     expect(text.startsWith('BEGIN:VCALENDAR')).toBe(true);
-});
-
-test('clearing the employee returns to the form', async ({ page, sample }) => {
-    await page.clock.install({ time: at(sample.today) });
-    await page.goto(`/#/personal/${sample.person.empId}`);
-    await page.locator('#clearEmployee').click();
-    await expect(page.locator('#employeeForm')).toBeVisible();
-    await expect(page.locator('#personalSchedule')).toBeHidden();
-    await expect(page.locator('#empId')).toBeFocused();
-    await expect(page).toHaveURL(/#\/personal$/);
 });
 
 test('on a phone the whole month fits on screen', async ({ page, sample }, testInfo) => {

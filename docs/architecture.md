@@ -161,7 +161,7 @@ router '/on-duty'          → activeTab = 'on-duty'
 3. **規則分在兩處**：班別規則在 `shift-rules.mjs`，分類 `shiftCategory` 在 `schedule.js`。
 4. **`excel.test.mjs` 會跑 `data/` 裡的真實資料**，壞資料會讓 test 先失敗，錯誤訊息比 build 少。
 5. **統計（早／中／晚／N／休）、連續上班、下個休假日仍直接掃 `records`**，沒有走 `dayState`；也不計「未排」天數，月份排到一半時加總會少於該月天數。
-6. **瀏覽器測試只在本機跑。** `pnpm test:e2e`（Playwright＋無頭 Chromium，桌機與手機尺寸）涵蓋主要操作、跨午夜、未排月份與手機版面；CI 只跑 `pnpm test`。沒有測到：WebKit／iOS Safari、Service Worker 離線、主畫面 App。
+6. **瀏覽器測試只在本機跑。** `pnpm test:e2e`（Playwright＋無頭 Chromium，桌機與手機尺寸）只涵蓋核心流程（開啟個人班表、首次輸入工號、月週切換、連點、滑動、當日班表篩選、未排月份、ICS 下載、手機版面）；CI 只跑 `pnpm test`。沒有測到：年月選擇器、跨午夜、清除工號、WebKit／iOS Safari、Service Worker 離線、主畫面 App。
 7. **Alpine 運算式用 `new AsyncFunction` 執行**。GitHub Pages 沒有 CSP 所以沒問題；若之後加 CSP 禁止 `unsafe-eval`，要改用 Alpine 的 CSP 版本並把樣板裡的運算式改成元件方法。
 
 ## 4. 相依盤點
