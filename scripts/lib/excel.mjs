@@ -71,26 +71,31 @@ export function readLookups(workbook) {
     return { ids, defs, warnings };
 }
 
-// Day header = the row holding a run 1,2,3,…,28+; name column sits left of day 1, the Total column left of that.
+// Day header = the row holding a run 1,2,3,…; name column sits left of day 1, the Total column left of that.
+// A run of 28+ is a full month; a shorter run (a month still being written) counts only when "Total" heads the
+// Total column in that row or the row above, so a stray 1 in the header area is not taken for day 1.
 function findDayHeader(rows) {
     for (const [index, row] of rows.slice(0, 10).entries()) {
         for (let col = 2; col < row.length; col++) {
             if (row[col] !== 1) continue;
             let count = 0;
             while (row[col + count] === count + 1) count++;
-            if (count >= 28) return { index, dayCol: col, count };
+            if (count >= 28 || [row, rows[index - 1]].some(above => text(above?.[col - 2]) === 'Total')) return { index, dayCol: col, count };
         }
     }
     return null;
 }
 
+// Returns a month in the shape the page uses as its data: dates, shifts, employees, records, warnings, and
+// writtenDays { 'YYYY-MM': n } = how many days the date row reaches; later days are unwritten, not an error.
 export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set()) {
     const header = findDayHeader(rows);
     if (!header) return null;
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
     const monthLength = new Date(Date.UTC(year, month, 0)).getUTCDate();
-    if (header.count !== monthLength) throw new Error(`${monthKey} 日期欄有 ${header.count} 天，應為 ${monthLength} 天`);
+    if (header.count > monthLength) throw new Error(`${monthKey} 日期欄有 ${header.count} 天，應為 ${monthLength} 天`);
     const dates = Array.from({ length: monthLength }, (_, day) => `${monthKey}-${String(day + 1).padStart(2, '0')}`);
+    const written = dates.slice(0, header.count);
     const nameCol = header.dayCol - 1;
     const totalCol = header.dayCol - 2;
     const shifts = {};
@@ -102,7 +107,7 @@ export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set(
         const name = text(row[nameCol]);
         // summary tables below the staff rows have no Total and start with a shift-code row ("1")
         if (text(row[totalCol]) === '' && Object.hasOwn(SHIFT_TYPES, name)) break;
-        if (!name || !dates.some((_, day) => text(row[header.dayCol + day]))) continue;
+        if (!name || !written.some((_, day) => text(row[header.dayCol + day]))) continue;
         const empId = ids.get(name);
         if (!empId) {
             warnings.add(`${name} 在工號表找不到工號，未納入`);
@@ -110,7 +115,7 @@ export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set(
         }
         if (employees.has(empId)) throw new Error(`${monthKey} 第 ${index + 1} 列：工號 ${empId}（${name}）重複出現`);
         employees.set(empId, { empId, name });
-        dates.forEach((date, day) => {
+        written.forEach((date, day) => {
             const code = text(row[header.dayCol + day]).toUpperCase();
             if (!code) return;
             const type = SHIFT_TYPES[code];
@@ -127,5 +132,5 @@ export function parseMonthSheet(rows, year, month, ids, defs, leaders = new Set(
         });
     }
     if (!records.length) throw new Error(`${monthKey} 沒有任何可用排班`);
-    return { dates, shifts, employees: [...employees.values()], records, warnings: [...warnings] };
+    return { dates, writtenDays: { [monthKey]: header.count }, shifts, employees: [...employees.values()], records, warnings: [...warnings] };
 }

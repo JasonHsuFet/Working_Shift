@@ -1,12 +1,14 @@
 // Page shell: header link, source warnings, connection status, tabs and routes. Each tab lives in its own module.
 import * as schedule from './schedule.js';
-import { store, data, state, router, hasDate } from './context.js';
+import { store, data, months, state, router, ensure, hasDate } from './context.js';
 import { element } from './dom.js';
 import { routePersonal } from './employee.js';
 import { showOnDuty, refreshLive } from './on-duty.js';
 
 const excelLink = element('annualScheduleDownload');
-excelLink.href = `./data/All_${new Date().getFullYear()}.xlsx`;
+// Every year with a published month has its workbook in data/; fall back to the latest one when this year has none yet.
+const thisYear = schedule.taipeiDate().slice(0, 4);
+excelLink.href = `./data/All_${months.some(month => month.startsWith(thisYear)) ? thisYear : months.at(-1).slice(0, 4)}.xlsx`;
 // iOS home-screen apps keep in-scope links inside the app with no way back; share the URL so a browser opens it. Other platforms use the plain link.
 excelLink.addEventListener('click', event => {
     if (navigator.standalone !== true || !navigator.share) return;
@@ -33,12 +35,14 @@ if (data.warnings.length) {
 
 function updateStatus() {
     const offline = !navigator.onLine || store.fromCache;
-    const outOfRange = !hasDate(schedule.taipeiDate());
+    const today = schedule.taipeiDate();
+    const outOfRange = !hasDate(today);
+    const unwritten = !outOfRange && !schedule.isWritten(data, today);
     const status = element('dataStatus');
     status.hidden = false;
-    status.className = `status${offline || outOfRange ? ' warn' : ''}`;
-    status.textContent = offline ? '無法連線，目前顯示已儲存的班表' : outOfRange ? '今日不在班表涵蓋期間' : '已連線，班表已同步';
-    element('liveDot').classList.toggle('warn', offline || outOfRange);
+    status.className = `status${offline || outOfRange || unwritten ? ' warn' : ''}`;
+    status.textContent = offline ? '無法連線，目前顯示已儲存的班表' : outOfRange ? '今日不在班表涵蓋期間' : unwritten ? '今日尚未排班' : '已連線，班表已同步';
+    element('liveDot').classList.toggle('warn', offline || outOfRange || unwritten);
     element('todayPeriod').disabled = outOfRange;
 }
 
@@ -48,6 +52,8 @@ async function checkPublished() {
         location.reload();
         return;
     }
+    // After midnight into a new month, today's month may not be loaded yet; it is needed to tell unwritten from scheduled.
+    await ensure([schedule.taipeiDate().slice(0, 7)]);
     updateStatus();
 }
 

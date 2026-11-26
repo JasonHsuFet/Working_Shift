@@ -26,6 +26,8 @@ export async function createStore(today) {
                     }
                 }
                 store.data.records.push(...part.records);
+                // legacy: month files built before writtenDays were always full months; remove once no cached copy predates it
+                Object.assign(store.data.writtenDays, part.writtenDays ?? { [key]: part.dates.length });
                 part.employees.forEach(person => store.employees.set(person.empId, person));
                 part.warnings.forEach(warning => { if (!store.data.warnings.includes(warning)) store.data.warnings.push(warning); });
             }, error => {
@@ -65,6 +67,7 @@ export async function createStore(today) {
         range: { start: `${months[0]}-01`, end: `${months.at(-1)}-${String(new Date(Date.UTC(lastYear, lastMonth, 0)).getUTCDate()).padStart(2, '0')}` },
         shifts: {},
         records: [],
+        writtenDays: {},
         warnings: [],
         sourceUpdatedAt: index.generatedAt
     };

@@ -1,4 +1,4 @@
-// Extracts every month sheet of data/All_YYYY.xlsx into dist/data/YYYY-MM.json and copies the SPA (web/) into dist/.
+// Extracts every month sheet of data/All_YYYY.xlsx into dist/data/YYYY-MM.json, copies the workbooks for download and the SPA (web/) into dist/.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,6 +16,7 @@ function build() {
         const year = Number(/^All_(\d{4})\.xlsx$/.exec(file)?.[1]);
         if (!year) continue;
         const workbook = readWorkbook(file);
+        fs.copyFileSync(path.join(DATA, file), path.join(DIST, 'data', file));
         for (const sheet of workbook.SheetNames) {
             const month = /^(0[1-9]|1[0-2])$/.test(sheet.trim()) ? Number(sheet) : 0;
             if (!month) {
@@ -29,6 +30,8 @@ function build() {
             if (months.includes(key)) throw new Error(`${key} 重複出現在多個檔案`);
             months.push(key);
             data.warnings.forEach(warning => console.warn(`warning: ${warning}`));
+            // Build log only: a short date row is a month still being written, not something every visitor needs to see.
+            if (data.writtenDays[key] < data.dates.length) console.warn(`warning: ${key} 日期欄只寫到第 ${data.writtenDays[key]} 天，之後的日期顯示為未排班`);
             fs.writeFileSync(path.join(DIST, 'data', `${key}.json`), JSON.stringify(data));
             console.log(`${file} ${sheet} -> data/${key}.json (${data.employees.length} 人, ${data.records.length} 筆)`);
         }
@@ -36,9 +39,6 @@ function build() {
     if (!months.length) throw new Error('data/ 沒有任何 All_YYYY.xlsx 月份班表');
     fs.writeFileSync(path.join(DIST, 'data', 'index.json'), JSON.stringify({ months: months.sort(), generatedAt: new Date().toISOString() }));
     fs.cpSync(path.join(ROOT, 'web'), DIST, { recursive: true });
-    const year = new Date().getFullYear();
-    const annualFile = `All_${year}.xlsx`;
-    fs.copyFileSync(path.join(DATA, annualFile), path.join(DIST, 'data', annualFile));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) build();

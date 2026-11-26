@@ -20,13 +20,13 @@ function renderSelectedDay() {
     element('selectedDate').textContent = dateLabel(selectedDate);
     const container = element('selectedShift');
     container.replaceChildren();
-    const record = data.records.find(item => item.empId === employee.empId && item.date === selectedDate);
+    const slot = schedule.dayState(data, employee.empId, selectedDate);
+    const { record, shift } = slot;
     element('employeeName').classList.toggle('leader', Boolean(record?.leader));
-    if (!record) {
-        container.append(textNode('p', '此日期沒有排班資料', 'empty'));
+    if (!shift) {
+        container.append(textNode('p', slot.state === schedule.DAY_STATE.UNWRITTEN ? '尚未排班' : '此日期沒有排班資料', 'empty'));
         return;
     }
-    const shift = data.shifts[record.code];
     const detail = textNode('div', '', 'shift-detail');
     const description = textNode('div', '', 'shift-text');
     const colorClass = schedule.shiftClass(shift);
@@ -38,8 +38,6 @@ function renderSelectedDay() {
 function renderCalendar() {
     const { employee } = state;
     if (!employee) return;
-    const records = data.records.filter(record => record.empId === employee.empId && record.date.startsWith(month));
-    const byDate = new Map(records.map(record => [record.date, record]));
     const today = schedule.taipeiDate();
     syncSelectedDate();
     element('employeeName').textContent = employee.name;
@@ -55,11 +53,11 @@ function renderCalendar() {
     for (let index = 0; index < offset; index++) calendar.append(textNode('span', ''));
     for (let day = 1; day <= count; day++) {
         const date = `${month}-${String(day).padStart(2, '0')}`;
-        const record = byDate.get(date);
-        const shift = record && data.shifts[record.code];
-        const button = textNode('button', '', `day${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}${record?.leader ? ' leader' : ''}`);
+        const slot = schedule.dayState(data, employee.empId, date);
+        const { record, shift } = slot;
+        const button = textNode('button', '', `day ${slot.state}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}${record?.leader ? ' leader' : ''}`);
         button.type = 'button';
-        button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${shift.label}${record.leader ? '，leader' : ''}` : '無資料'}`);
+        button.setAttribute('aria-label', `${dateLabel(date)}，${shift ? `${record.code} ${shift.label}${record.leader ? '，leader' : ''}` : slot.state === schedule.DAY_STATE.UNWRITTEN ? '尚未排班' : '無資料'}`);
         button.setAttribute('aria-pressed', String(date === selectedDate));
         button.append(textNode('span', String(day), 'day-number'), textNode('span', record ? record.code : '—', `day-code ${schedule.shiftClass(shift)}`));
         button.addEventListener('click', () => { selectedDate = date; renderPersonal(); element('calendar').querySelector(`[aria-pressed="true"]`).focus({ preventScroll: true }); });
@@ -91,7 +89,6 @@ function renderWeek() {
     syncSelectedDate();
     const start = schedule.weekStart(selectedDate);
     const days = Array.from({ length: 7 }, (_, index) => schedule.addDays(start, index));
-    const byDate = new Map(data.records.filter(record => record.empId === employee.empId && record.date >= days[0] && record.date <= days[6]).map(record => [record.date, record]));
     const today = schedule.taipeiDate();
     const years = [days[0].slice(0, 4), days[6].slice(0, 4)];
     element('employeeName').textContent = employee.name;
@@ -102,10 +99,10 @@ function renderWeek() {
     const list = element('weekList');
     list.replaceChildren();
     for (const date of days) {
-        const record = byDate.get(date);
-        const shift = record && data.shifts[record.code];
+        const slot = schedule.dayState(data, employee.empId, date);
+        const { record, shift } = slot;
         const colorClass = schedule.shiftClass(shift);
-        const row = textNode('button', '', `week-row${shift ? shift.rest ? ' rest' : ' work' : ''}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}`);
+        const row = textNode('button', '', `week-row ${slot.state}${date === today ? ' today' : ''}${date === selectedDate ? ' selected' : ''}`);
         row.type = 'button';
         row.setAttribute('aria-pressed', String(date === selectedDate));
         row.addEventListener('click', () => {
@@ -117,7 +114,7 @@ function renderWeek() {
         const day = textNode('div', '', 'week-day');
         day.append(textNode('strong', monthDay(date)), textNode('small', weekdayLabel(date)));
         const description = textNode('div', '', 'shift-text');
-        description.append(textNode('p', shift ? shift.label : '無排班資料', colorClass), textNode('small', shift ? schedule.workTimeLabel(shift) : '—', colorClass));
+        description.append(textNode('p', shift ? shift.label : slot.state === schedule.DAY_STATE.UNWRITTEN ? '尚未排班' : '無排班資料', colorClass), textNode('small', shift ? schedule.workTimeLabel(shift) : '—', colorClass));
         row.append(day, textNode('span', record ? record.code : '—', `shift-code ${colorClass}${record?.leader ? ' leader-dot' : ''}`), description);
         list.append(row);
     }
@@ -182,8 +179,7 @@ function renderInsights(from, to, scope) {
     else if (byDate.get(selectedDate)?.rest) parts.push(`${monthDay(selectedDate)} 休假`);
     if (nextRest) parts.push(`下個休假日 ${monthDay(nextRest)}（${Math.round((Date.parse(`${nextRest}T00:00:00Z`) - Date.parse(`${selectedDate}T00:00:00Z`)) / 86400000)} 天後）`);
     element('statStreak').textContent = parts.join(' · ');
-    const record = mine.find(item => item.date === selectedDate);
-    const shift = record && data.shifts[record.code];
+    const { shift } = schedule.dayState(data, employee.empId, selectedDate);
     element('colleagues').hidden = !shift || shift.rest;
     if (element('colleagues').hidden) return;
     const others = data.records.filter(item => item.date === selectedDate && data.shifts[item.code].group === shift.group && item.empId !== employee.empId)

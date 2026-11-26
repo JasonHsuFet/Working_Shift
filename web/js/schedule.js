@@ -45,6 +45,24 @@ export function dayRecords(data, date) {
     return data.records.filter(record => record.date === date);
 }
 
+// `data` is one parsed month (build) or the months merged so far (page): { shifts, records, writtenDays: { 'YYYY-MM': n } }.
+// A month absent from writtenDays is unpublished (or not loaded yet). Inside it, a date past the date row is unwritten
+// for everyone; a written date without this person's code is none (they have no row that month, e.g. joined or left).
+export const DAY_STATE = { WORK: 'work', REST: 'rest', UNWRITTEN: 'unwritten', NONE: 'none', UNPUBLISHED: 'unpublished' };
+
+// True when the month's date row reaches this date, i.e. the day has been scheduled for everyone.
+export function isWritten(data, date) {
+    return Number(date.slice(8)) <= (data.writtenDays[date.slice(0, 7)] ?? 0);
+}
+
+export function dayState(data, empId, date) {
+    const record = data.records.find(item => item.empId === empId && item.date === date);
+    const shift = record && data.shifts[record.code];
+    if (shift) return { state: shift.rest ? DAY_STATE.REST : DAY_STATE.WORK, record, shift };
+    if (!(date.slice(0, 7) in data.writtenDays)) return { state: DAY_STATE.UNPUBLISHED };
+    return { state: isWritten(data, date) ? DAY_STATE.NONE : DAY_STATE.UNWRITTEN };
+}
+
 export function shiftClass(shift) {
     return shift?.color ? `shift-${shift.color}` : '';
 }

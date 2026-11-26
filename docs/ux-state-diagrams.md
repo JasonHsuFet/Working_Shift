@@ -124,6 +124,8 @@ stateDiagram-v2
         換成不同員工時重設為：本月、記住的檢視、今天
         月份下載失敗：頂端顯示錯誤，仍以已載入資料繪製
         「今天」在今天不在發布範圍時停用；週檢視的標題只顯示期間，不能點
+        日期列還沒寫到的日期（月份只排到一半）：格子虛線框、明細顯示「尚未排班」
+        日期已寫但此人該月沒有排班列（新進、離職）：維持「—」、「此日期沒有排班資料」
     end note
 ```
 
@@ -135,6 +137,7 @@ stateDiagram-v2
     state "今天・全部或指定班別<br/>出勤 / 休假人數" as LiveAll
     state "其他日期・全部或指定班別<br/>「目前值班」按鈕停用" as Other
     state "超出發布期間<br/>提示：此日期不在已發布資料期間" as Out
+    state "已發布但尚未排班<br/>提示：此日期尚未排班；「目前值班」停用" as Unwritten
 
     [*] --> LiveNow: 預設今天＋目前值班
     LiveNow --> LiveAll: 點全部 / 某班別
@@ -147,9 +150,12 @@ stateDiagram-v2
     Other --> Out: 日期選擇器選到範圍外（← → 在範圍邊界停用）
     Out --> Other: 換回範圍內日期
     Out --> LiveNow: 按「今天」
+    Other --> Unwritten: 換到月份只排到一半、之後的日期
+    Unwritten --> Other: 換回已排班日期
     note right of Other
         日期與篩選不進網址
         今天本身不在發布範圍時，「今天」會落在「其他日期・全部」
+        今天尚未排班時，「今天」會落在「已發布但尚未排班」
         日期欄清空時：日期標籤空白，← → 停用
     end note
 ```
@@ -181,11 +187,13 @@ stateDiagram-v2
     state "已連線，班表已同步" as Synced
     state "無法連線，目前顯示已儲存的班表" as Offline
     state "今日不在班表涵蓋期間" as OutRange
+    state "今日尚未排班（月份已發布、只排到今天之前）" as Unwritten
     state check <<choice>>
 
     [*] --> Synced
     [*] --> Offline: 資料來自 SW 快取
     [*] --> OutRange
+    [*] --> Unwritten
     Synced --> Offline: offline 事件
     Offline --> check: online 事件 / 回到前景
     Synced --> check: 回到前景

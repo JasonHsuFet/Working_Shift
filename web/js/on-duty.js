@@ -66,8 +66,9 @@ async function renderOnDuty() {
     if (hasDate(date)) await ensure([date.slice(0, 7)]);
     if (run !== onDutyRun) return;
     const now = new Date();
-    // The 'now' filter only makes sense for today's published date.
-    const live = hasDate(date) && date === schedule.taipeiDate(now);
+    const written = hasDate(date) && schedule.isWritten(data, date);
+    // The 'now' filter only makes sense for today, once its date is scheduled.
+    const live = written && date === schedule.taipeiDate(now);
     filterBar.querySelector('[data-cat="now"]').disabled = !live;
     if (!live && rosterFilter === 'now') setFilter('');
     element('onDutyDateLabel').textContent = !validDate ? '' : live ? `${dateLabel(date)} ${new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', timeStyle: 'short' }).format(now)}` : dateLabel(date);
@@ -85,7 +86,7 @@ async function renderOnDuty() {
     } else {
         const restCount = records.filter(record => data.shifts[record.code].rest).length;
         summary('onDutySummary', [['出勤', records.length - restCount], ['休假', restCount]]);
-        notice('onDutyNotice', hasDate(date) ? '' : '此日期不在已發布資料期間。');
+        notice('onDutyNotice', written ? '' : hasDate(date) ? '此日期尚未排班。' : '此日期不在已發布資料期間。');
         const visible = records.filter(record => !rosterFilter || schedule.shiftCategory(data.shifts[record.code]) === rosterFilter);
         renderRoster('onDutyRoster', visible, records.length ? '沒有符合篩選的排班' : '此日期沒有排班資料');
     }
