@@ -112,8 +112,7 @@ web/                               網站原始檔，build 時整包複製到 di
 data/                              Excel 來源檔
 docs/ux-state-diagrams.md          UX 狀態圖（行為規格，改 UI 行為時一起更新）
 scripts/build.mjs                  Excel → JSON 與網站打包
-scripts/lib/excel.mjs              Excel 讀取與解析（工號表、班別表、月份工作表）
-scripts/lib/leaders.mjs            從 xlsx 讀出橘黃底（FFC000）儲存格，標記該班 leader
+scripts/lib/excel.mjs              Excel 讀取與解析（工號表、班別表、月份工作表、橘黃底 leader 格）
 scripts/lib/shift-rules.mjs        班別代碼規則
 test/                              測試（node --test）
 .github/workflows/pages.yml        測試、建置與部署

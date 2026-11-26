@@ -3,18 +3,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
 import { SHIFT_TYPES, TIME_ALIASES, DUTY_TIMES, FULL_TIMES, ROSTER_GROUPS, REST_CODES, COLORS, GROUP_LABELS } from './shift-rules.mjs';
-import { leaderCells } from './leaders.mjs';
 
 export const DATA = path.resolve(import.meta.dirname, '../../data');
 export const DB_FILE = 'TPKC_NNOC班表模板_V1_3_DB版.xlsm';
+const LEADER_FILL = 'FFC000';
 
 function text(value) {
     return value == null ? '' : String(value).trim();
 }
 
 // ponytail: sheetRows cap, since some sheets claim 1,048,576 used rows; raise it if staff tables ever pass 1000 rows
+// cellStyles exposes each cell's fill as cell.s, which is how leaders are marked.
 export function readWorkbook(file) {
-    return XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000 });
+    return XLSX.read(fs.readFileSync(path.join(DATA, file)), { sheetRows: 1000, cellStyles: true });
 }
 
 export function sheetRows(workbook, name) {
@@ -22,12 +23,16 @@ export function sheetRows(workbook, name) {
 }
 
 // "row,col" keys of leader-orange cells, shifted to the same origin as the arrays from sheetRows().
-export function sheetLeaders(file, workbook, name) {
-    const origin = XLSX.utils.decode_range(workbook.Sheets[name]['!ref']).s;
-    return new Set([...leaderCells(path.join(DATA, file)).get(name) ?? []].map(key => {
-        const [row, col] = key.split(',').map(Number);
-        return `${row - origin.r},${col - origin.c}`;
-    }));
+export function sheetLeaders(workbook, name) {
+    const sheet = workbook.Sheets[name];
+    const origin = XLSX.utils.decode_range(sheet['!ref']).s;
+    const leaders = new Set();
+    for (const [address, cell] of Object.entries(sheet)) {
+        if (address[0] === '!' || cell.s?.patternType !== 'solid' || !cell.s.fgColor?.rgb?.toUpperCase().endsWith(LEADER_FILL)) continue;
+        const { r, c } = XLSX.utils.decode_cell(address);
+        leaders.add(`${r - origin.r},${c - origin.c}`);
+    }
+    return leaders;
 }
 
 // 工號 sheet: active staff in A/B, leavers in E/F as fallback. First entry per name wins.

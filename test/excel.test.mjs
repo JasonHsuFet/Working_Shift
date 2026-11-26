@@ -14,7 +14,7 @@ for (const file of fs.readdirSync(new URL('../data/', import.meta.url))) {
     const book = readWorkbook(file);
     for (const sheet of book.SheetNames.filter(name => /^(0[1-9]|1[0-2])$/.test(name.trim()))) {
         const month = Number(sheet);
-        const data = parseMonthSheet(sheetRows(book, sheet), year, month, ids, defs, sheetLeaders(file, book, sheet));
+        const data = parseMonthSheet(sheetRows(book, sheet), year, month, ids, defs, sheetLeaders(book, sheet));
         assert.ok(data, `${file} ${sheet}: day header not found`);
         assert.equal(data.dates.length, new Date(Date.UTC(year, month, 0)).getUTCDate());
         assert.ok(data.employees.length > 0);
