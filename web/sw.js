@@ -1,6 +1,6 @@
 // Network-first: always serve fresh pages and schedules, falling back to the last cached copy when offline.
 // Bump the version when the shell files move, so old copies are dropped on activate.
-const CACHE = 'noc-schedule-v5';
+const CACHE = 'noc-schedule-v6';
 const SHELL = ['./', 'index.html', 'js/app.js', 'js/context.js', 'js/dom.js', 'js/personal.js', 'js/on-duty.js', 'js/employee.js', 'js/schedule.js', 'js/store.js', 'js/router.js', 'js/theme.js', 'css/style.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png'];
 
 self.addEventListener('install', event => {
