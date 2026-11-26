@@ -95,7 +95,19 @@ pnpm install
 pnpm test      # test/*.test.mjs：Excel 結構與班別解析、當班判斷、ICS、分類統計、路由
 pnpm build     # 產生 dist/（網站檔案 + data/YYYY-MM.json）
 pnpm preview   # 預覽 dist/（先 pnpm build）
+pnpm test:e2e  # e2e/：先 build，再用無頭 Chromium 以桌機與手機（Pixel 7）尺寸操作網站
+pnpm perf      # 效能剖析（先 pnpm build 並開著 pnpm preview）；可給多個網址並排比較
 ```
+
+瀏覽器測試只在本機跑，CI 不跑。第一次要先下載瀏覽器並安裝系統套件（Ubuntu）：
+
+```
+pnpm exec playwright install --only-shell chromium
+sudo apt-get install -y libnss3 libnspr4 fonts-noto-cjk
+```
+
+- 和 `test/excel.test.mjs` 一樣不寫死人員或班別：每個測試從已發布資料挑最後一個完整月份與第一位人員，並把時鐘固定在該月 15 號。
+- 「只排到一半的月份」用攔截 JSON 的方式模擬，不需要另外的 Excel。
 
 - 不能直接用瀏覽器開啟 `web/index.html`（`file://` 無法下載班表），請用 `pnpm preview` 或任何 HTTP 伺服器。
 - 測試不比對特定人員或班別，換人或改班不會讓測試失敗；但結構錯誤會（見「會讓部署失敗的情況」）。
@@ -125,6 +137,7 @@ scripts/build.mjs                  Excel → JSON 與網站打包
 scripts/lib/excel.mjs              Excel 讀取與解析（工號表、班別表、月份工作表、橘黃底 leader 格）
 scripts/lib/shift-rules.mjs        班別代碼規則
 test/                              測試（node --test）
+e2e/、playwright.config.mjs        瀏覽器測試（pnpm test:e2e，Playwright）
 .github/workflows/pages.yml        測試、建置與部署
 package.json                       package 名稱為 not-shift（站名沿用 Working_Shift）
 ```

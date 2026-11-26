@@ -76,7 +76,7 @@ flowchart LR
 | `js/employee.js` | 元件 `employeeForm`、`employeeDialog`；自動完成；`#/personal` 路由邏輯（`routePersonal`）與 `clearEmployee` |
 | `js/app.js` | 元件 `page`（`<body>`）：Excel 下載連結、來源提醒、狀態列；路由表、時鐘（每 30 秒）、回到前景檢查新版；`Alpine.start()` |
 | `js/alpine.js` | 只在 `dist/`：build 從 `node_modules/alpinejs/dist/module.esm.min.js` 複製 |
-| `js/dom.js` | `element`、`dateLabel`、`onSwipe` |
+| `js/dom.js` | `element`、`dateLabel`、`onSwipe`、`memo`（getter 結果快取） |
 | `js/schedule.js` | 業務邏輯（純函式，Node 測試也 import）：`dayState`、`isWritten`、當班判斷、分類統計、分組、ICS |
 | `js/store.js` | 按需載入月份並合併成 `data` |
 | `js/router.js` | hash router |
@@ -106,6 +106,53 @@ router '/on-duty'          → activeTab = 'on-duty'
 - 兩個分頁的載入都是「先 `await ensure`、再改狀態」，並用序號丟掉晚回來的舊請求，所以不會先畫出還沒載入的月份。
 - 留在 Alpine 外、直接操作 DOM 的部分：路由、手機格子高度量測（`sizeDays`）、滑動手勢、`showModal`／popover、ICS 下載。
 
+### 效能
+
+`pnpm perf`（`e2e/perf.mjs`）用無頭 Chromium 剖析一個已啟動的站台，可給多個網址並排比較。量的是：
+
+- **冷載入：** 到月曆畫出今天為止的時間、腳本／排版／樣式耗時、下載量、記憶體。
+- **快速大量操作：** 連按換月、逐日點選、週檢視換週、當日班表換日、切換篩選、時鐘跳動。
+- **長任務與記憶體：** 操作後強制回收記憶體，看記憶體有沒有增加。
+
+以下是 2026-11-26 的結果，比較改用 Alpine 前（`1fcbb57`）與目前。都是 3 次取中位數，畫面寬 412 px。
+
+| 指標 | 改用 Alpine 前 1x | 目前 1x | 改用 Alpine 前 4x CPU | 目前 4x CPU |
+|---|---|---|---|---|
+| 載入到月曆畫出今天 | 79 ms | 107 ms | 290 ms | 408 ms |
+| 載入下載量 | 47 KB | 68 KB | | |
+| 點選日期 p50／p95 | 17／30 ms | 33／34 ms | 35／81 ms | 35／50 ms |
+| 換週 p50 | 33 ms | 33 ms | 33 ms | 33 ms |
+| 當日班表換日 p50 | 33 ms | 33 ms | 33 ms | 50 ms |
+| 切換篩選 p50 | 17 ms | 33 ms | 17 ms | 33 ms |
+| 連按 24 次換月再按回來 | 91 ms | 237 ms | 369 ms | 1,023 ms |
+| 長任務（> 50 ms） | 0 | 0 | 10 個／631 ms | 3 個／311 ms |
+| 操作後記憶體 | 4.5 MB | 8.0 MB | | |
+
+改用 Alpine 的第一版遠比這差：點日期 167 ms、換週 319 ms，4x CPU 時直接逾時。原因與對策如下。
+
+- **Getter 被每個繫結重跑。** 例如 `insights` 被 6 個繫結讀取，每次都重新掃一遍全部紀錄。
+  - 對策：`memo()` 依輸入快取結果。key 必須包含所有響應式依賴。
+- **迴圈裡讀響應式屬性。** 每筆紀錄都讀一次 `this.person`，會經過兩層 Proxy。
+  - 對策：迴圈外先取出純值，例如 `insightsFor(empId, …)`。
+- **`Intl.DateTimeFormat` 每次呼叫都重新建立。** 例如 `state.today`、`dateLabel`。
+  - 對策：在模組層級建立一次；`today` 改成和 `now` 一起更新的一般欄位。
+- **`dayState` 線性搜尋全部紀錄。**
+  - 對策：改用「empId|date」索引。
+- **隱藏的檢視照樣重畫。** 包括週檢視下的月曆、沒打開的年月選擇器，以及分頁沒打開時的當日名單。
+  - 對策：這些 getter 在隱藏時回傳空陣列。
+- **`ensure()` 不論有沒有新資料都把 `version` 加一。**
+  - 對策：只有真的合併進新月份才加一。
+- **「目前值班」解析全部紀錄的時間。**
+  - 對策：只看昨天與今天開始的班。
+
+剩下的差距：
+
+- 首次載入多 30–40%（Alpine 本身 56 KB 的解析與初始化）。
+- 每次互動多一幀（約 16 ms）。
+- 連按換月時，每個新載入的月份都會讓目前畫面重算一次。
+
+這些都在可接受範圍，沒有再處理。
+
 ## 3. 還沒處理、之後值得做的
 
 1. **`data.records` 是扁平陣列**，`dayState` 每次都線性搜尋。一個月曆約 31 × 4,000 次比較，目前沒問題；要做跨年統計時再加索引。
@@ -113,7 +160,7 @@ router '/on-duty'          → activeTab = 'on-duty'
 3. **規則分在兩處**：班別規則在 `shift-rules.mjs`，分類 `shiftCategory` 在 `schedule.js`。
 4. **`excel.test.mjs` 會跑 `data/` 裡的真實資料**，壞資料會讓 test 先失敗，錯誤訊息比 build 少。
 5. **統計（早／中／晚／N／休）、連續上班、下個休假日仍直接掃 `records`**，沒有走 `dayState`；也不計「未排」天數，月份排到一半時加總會少於該月天數。
-6. **前端沒有自動化 UI 測試**。重構與改用 Alpine 時都在暫存目錄用 jsdom 載入 `dist/`，逐項比對改動前後的畫面輸出，但沒有放進 repo。
+6. **瀏覽器測試只在本機跑。** `pnpm test:e2e`（Playwright＋無頭 Chromium，桌機與手機尺寸）涵蓋主要操作、跨午夜、未排月份與手機版面；CI 只跑 `pnpm test`。沒有測到：WebKit／iOS Safari、Service Worker 離線、主畫面 App。
 7. **Alpine 運算式用 `new AsyncFunction` 執行**。GitHub Pages 沒有 CSP 所以沒問題；若之後加 CSP 禁止 `unsafe-eval`，要改用 Alpine 的 CSP 版本並把樣板裡的運算式改成元件方法。
 
 ## 4. 相依盤點
@@ -126,7 +173,8 @@ router '/on-duty'          → activeTab = 'on-duty'
 |---|---|---|---|---|
 | `xlsx`（SheetJS 社群版） | 0.20.3 | `cdn.sheetjs.com` 的 tarball，不在 npm registry | 讀 xlsx／xlsm 與儲存格底色 | lockfile 記錄 sha512 integrity，CDN 上的檔案被換掉時安裝失敗；CDN 連不上時只能靠 CI 的 pnpm 快取。放在 `dependencies`，CI 的 `--prod` 只裝它。自動更新工具不會追蹤，升級步驟見 README。 |
 | `alpinejs` | 3.17.5（固定版本） | npm | 前端 DOM 管理；build 複製到 `dist/js/alpine.js` | 單一檔案、沒有其他相依（內含 `@vue/reactivity`），壓縮後 56 KB、gzip 約 20 KB。放在 `dependencies`，CI 的 `--prod` 會裝。lockfile 有 integrity。 |
-| `vite` | `^8.3.3`（lock 8.3.3） | npm | 只用在本機 `pnpm preview` | lockfile 50 個套件中有 49 個屬於它（多數是各平台的二進位檔，實際安裝約 19 個）。放在 `devDependencies`，CI 用 `--prod` 不安裝。 |
+| `@playwright/test` | 1.65.0（固定版本） | npm | 本機瀏覽器測試 `pnpm test:e2e` | `devDependencies`，CI 不裝。瀏覽器（Chromium headless shell）另外下載到 `~/.cache/ms-playwright`；Ubuntu 需 `libnss3`、`libnspr4`，中文截圖需 CJK 字型。 |
+| `vite` | `^8.3.3`（lock 8.3.3） | npm | 本機 `pnpm preview`；`pnpm test:e2e` 也用它提供 `dist/` | lockfile 50 個套件中有 49 個屬於它（多數是各平台的二進位檔，實際安裝約 19 個）。放在 `devDependencies`，CI 用 `--prod` 不安裝。 |
 
 **執行環境**
 
@@ -189,7 +237,7 @@ sw.js：獨立執行，只靠 SHELL 清單知道有哪些檔
 
 這次重構時用過，但只裝在暫存目錄，重開機可能消失：
 
-- `jsdom` 26.1.0：在 Node 裡載入頁面做冒煙測試。
+- `jsdom` 26.1.0：在 Node 裡載入頁面，逐項比對改動前後的畫面輸出（重構與改用 Alpine 時用；之後由 `pnpm test:e2e` 取代）。
 - `opentype.js` 1.3.4、`@fontsource/archivo-black` 5.2.5、`@resvg/resvg-js` 2.6.2：重繪 NOC 圖示並輸出 PNG。
 
 ### 觀察

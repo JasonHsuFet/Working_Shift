@@ -3,8 +3,11 @@ export function normalizeEmpId(value) {
     return String(value || '').trim().replace(/^f/i, '').toUpperCase();
 }
 
+// Built once: constructing an Intl.DateTimeFormat costs far more than formatting with it.
+const taipeiParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
+
 export function taipeiDate(now = new Date()) {
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const parts = taipeiParts.formatToParts(now);
     const value = type => parts.find(part => part.type === type).value;
     return `${value('year')}-${value('month')}-${value('day')}`;
 }
@@ -33,9 +36,13 @@ export function bounds(record, shifts, full = false) {
     return { start, end };
 }
 
+// Shifts last under a day, so only those starting today or yesterday can be running now; the rest are skipped unparsed.
 export function currentRecords(data, now = new Date()) {
     const instant = now.getTime();
+    const today = taipeiDate(now);
+    const days = new Set([addDays(today, -1), today]);
     return data.records.filter(record => {
+        if (!days.has(record.date)) return false;
         const interval = bounds(record, data.shifts);
         return interval && interval.start <= instant && instant < interval.end;
     });
@@ -55,8 +62,19 @@ export function isWritten(data, date) {
     return Number(date.slice(8)) <= (data.writtenDays[date.slice(0, 7)] ?? 0);
 }
 
+// "empId|date" -> record, rebuilt when more records are merged in (one record per person and date).
+const indexes = new WeakMap();
+function recordAt(data, empId, date) {
+    let index = indexes.get(data.records);
+    if (index?.count !== data.records.length) {
+        index = { count: data.records.length, byKey: new Map(data.records.map(record => [`${record.empId}|${record.date}`, record])) };
+        indexes.set(data.records, index);
+    }
+    return index.byKey.get(`${empId}|${date}`);
+}
+
 export function dayState(data, empId, date) {
-    const record = data.records.find(item => item.empId === empId && item.date === date);
+    const record = recordAt(data, empId, date);
     const shift = record && data.shifts[record.code];
     if (shift) return { state: shift.rest ? DAY_STATE.REST : DAY_STATE.WORK, record, shift };
     if (!(date.slice(0, 7) in data.writtenDays)) return { state: DAY_STATE.UNPUBLISHED };

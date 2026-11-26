@@ -50,8 +50,9 @@ Alpine.store('app', {
     version: 0,
     fatal: '',
     offline: !navigator.onLine || store.fromCache,
-    now: Date.now(), // moved on every 30 seconds and when the page comes back to the foreground
-    get today() { return schedule.taipeiDate(new Date(this.now)); },
+    // The clock: moved every 30 seconds and when the page comes back to the foreground (see app.js).
+    now: Date.now(),
+    today: schedule.taipeiDate(),
     empInput: '',
     empError: '',
     empInvalid: false,
@@ -60,6 +61,7 @@ Alpine.store('app', {
 export const state = Alpine.store('app');
 
 export async function ensure(wanted) {
+    const count = data.records.length;
     try {
         await store.ensure(wanted);
         state.fatal = '';
@@ -68,7 +70,8 @@ export async function ensure(wanted) {
         state.fatal = `載入班表失敗：${error.name === 'TimeoutError' ? '下載逾時' : error.message}`;
         return false;
     } finally {
-        state.version++;
+        // Only when a month was actually merged in: every getter that reads `data` recomputes on it.
+        if (data.records.length !== count) state.version++;
     }
 }
 

@@ -75,7 +75,10 @@ router
     .resolve();
 
 // The clock drives today's live roster and every "today" mark; the on-duty date follows it across midnight.
-const tick = () => { state.now = Date.now(); };
+const tick = () => {
+    state.now = Date.now();
+    state.today = schedule.taipeiDate(new Date(state.now));
+};
 setInterval(tick, 30000);
 window.addEventListener('online', checkPublished);
 window.addEventListener('offline', refreshStatus);
