@@ -1,7 +1,6 @@
-// Published schedule: downloads months on demand and merges them into one data set.
 const TIMEOUT = 30000;
 
-// Loads data/index.json and the current month (or the latest one when today is not published).
+// Loads index.json and the current month, or the latest one when today is not published.
 export async function createStore(today) {
     const loadedMonths = new Map();
     const shiftDefinedIn = {};
@@ -14,7 +13,7 @@ export async function createStore(today) {
         return response.json();
     }
 
-    // Each month is fetched once and merged into `data`; a later month wins when two define the same shift code.
+    // Each month is fetched once and merged into `data`; a later month's shift definition wins.
     function loadMonth(key) {
         if (!store.months.includes(key)) return Promise.resolve();
         if (!loadedMonths.has(key)) {
@@ -26,6 +25,8 @@ export async function createStore(today) {
                     }
                 }
                 store.data.records.push(...part.records);
+                // legacy: month files built before writtenDays were always full months; remove once no cached copy predates it
+                Object.assign(store.data.writtenDays, part.writtenDays ?? { [key]: part.dates.length });
                 part.employees.forEach(person => store.employees.set(person.empId, person));
                 part.warnings.forEach(warning => { if (!store.data.warnings.includes(warning)) store.data.warnings.push(warning); });
             }, error => {
@@ -36,7 +37,7 @@ export async function createStore(today) {
         return loadedMonths.get(key);
     }
 
-    // Loads the given months, plus the months next to them so lookups can cross a month boundary. Throws when a wanted month fails.
+    // Also loads the neighbouring months, so streaks and weeks can cross a month boundary. Throws only for a wanted month.
     async function ensure(wanted) {
         const { months } = store;
         const keys = wanted.filter(key => months.includes(key));
@@ -65,11 +66,11 @@ export async function createStore(today) {
         range: { start: `${months[0]}-01`, end: `${months.at(-1)}-${String(new Date(Date.UTC(lastYear, lastMonth, 0)).getUTCDate()).padStart(2, '0')}` },
         shifts: {},
         records: [],
+        writtenDays: {},
         warnings: [],
         sourceUpdatedAt: index.generatedAt
     };
     store.baseMonth = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : months.at(-1);
-    await loadMonth(store.baseMonth);
     await ensure([store.baseMonth]);
     return store;
 }

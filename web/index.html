@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="./css/style.css">
     <script type="module" src="./js/app.js"></script>
 </head>
-<body>
+<body x-data="page">
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
         <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
         <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
@@ -32,71 +32,84 @@
     </svg>
     <header class="masthead">
         <div class="header-bar">
-            <div class="brand"><img src="./assets/icon.svg" width="32" height="32" alt=""><h1>值班班表</h1><p id="dataStatus" class="status" role="status" hidden></p></div>
+            <div class="brand"><img src="./assets/icon.svg" width="32" height="32" alt=""><h1>值班班表</h1><p id="dataStatus" class="status" role="status" hidden :hidden="false" :class="{ warn: status.warn }" x-text="status.text"></p></div>
             <div class="header-actions">
-                <a id="annualScheduleDownload" class="theme-toggle download-toggle" href="./data/All_2026.xlsx" target="_blank" rel="noopener" aria-label="在新頁面開啟當年度班表 Excel 原始檔" title="在新頁面開啟當年度班表 Excel 原始檔"><svg class="icon" aria-hidden="true"><use href="#icon-excel"/></svg></a>
+                <a id="annualScheduleDownload" class="theme-toggle download-toggle" href="./data/All_2026.xlsx" :href="excelHref" @click="openExcel($event)" target="_blank" rel="noopener" aria-label="在新頁面開啟當年度班表 Excel 原始檔" title="在新頁面開啟當年度班表 Excel 原始檔"><svg class="icon" aria-hidden="true"><use href="#icon-excel"/></svg></a>
                 <button id="themeToggle" type="button" class="theme-toggle" aria-label="主題：跟隨系統" title="主題：跟隨系統"><svg data-theme-icon="system" class="icon" aria-hidden="true"><use href="#icon-system"/></svg><svg data-theme-icon="light" hidden class="icon" aria-hidden="true"><use href="#icon-light"/></svg><svg data-theme-icon="dark" hidden class="icon" aria-hidden="true"><use href="#icon-dark"/></svg></button>
             </div>
         </div>
     </header>
     <main>
-        <p id="fatal" class="notice error" role="alert" hidden></p>
-        <p id="sourceWarnings" class="notice" role="status" popover="manual" tabindex="0" hidden></p>
+        <p id="fatal" class="notice error" role="alert" hidden :hidden="!$store.app.fatal" x-text="$store.app.fatal"></p>
+        <p id="sourceWarnings" class="notice" role="status" popover="manual" tabindex="0" hidden :hidden="!warnings" x-ref="warnings" x-text="warnings"></p>
         <nav class="tabs" aria-label="班表檢視">
-            <a href="#/personal" data-tab="personal" aria-current="page">個人班表</a>
-            <a href="#/on-duty" data-tab="on-duty">當日班表</a>
+            <a href="#/personal" data-tab="personal" aria-current="page" :aria-current="$store.app.activeTab === 'personal' ? 'page' : false">個人班表</a>
+            <a href="#/on-duty" data-tab="on-duty" :aria-current="$store.app.activeTab === 'on-duty' ? 'page' : false">當日班表</a>
         </nav>
-        <section id="personal" aria-label="個人班表">
-            <form id="employeeForm" class="employee-form">
+        <section id="personal" aria-label="個人班表" :hidden="$store.app.activeTab !== 'personal'">
+            <form id="employeeForm" class="employee-form" x-data="employeeForm" :hidden="Boolean($store.app.employee)" @submit.prevent="submit()">
                 <label for="empId">工號</label>
-                <div class="input-row"><input id="empId" name="empId" type="text" list="empList" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="輸入工號" required><button type="submit" class="primary">查詢</button></div>
-                <p id="employeeError" class="field-error" role="alert" hidden></p>
+                <div class="input-row"><input id="empId" name="empId" type="text" list="empList" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="輸入工號" required x-model="$store.app.empInput" @input="suggest()" :aria-invalid="$store.app.empInvalid ? 'true' : false"><button type="submit" class="primary">查詢</button></div>
+                <p id="employeeError" class="field-error" role="alert" hidden :hidden="!$store.app.empError" x-text="$store.app.empError"></p>
             </form>
-            <div id="personalSchedule" hidden>
+            <div id="personalSchedule" x-data="personal" hidden :hidden="!$store.app.employee">
                 <div class="person-heading">
-                    <div class="info-row"><span class="info-label">姓名</span><h2 id="employeeName"></h2></div>
-                    <div class="person-actions"><button id="exportIcs" type="button" class="plain">匯出 ICS</button><button id="clearEmployee" type="button" class="plain">清除工號</button></div>
+                    <div class="info-row"><span class="info-label">姓名</span><h2 id="employeeName" :class="{ leader: selected.leader }" x-text="person.name"></h2></div>
+                    <div class="person-actions"><button id="exportIcs" type="button" class="plain" :title="isWeek ? '匯出此週行事曆（.ics）' : '匯出此月行事曆（.ics）'" @click="exportIcs()">匯出 ICS</button><button id="clearEmployee" type="button" class="plain" @click="clearEmployee()">清除工號</button></div>
                 </div>
-                <div class="calendar-panel">
-                    <div class="month-nav"><button id="periodLabel" type="button" class="period-label" aria-haspopup="dialog"><span id="periodText"></span><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></button><button id="todayPeriod" type="button" class="today-button">今天</button><button id="prevPeriod" type="button" class="icon-button" aria-label="上個月" title="上個月"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><button id="nextPeriod" type="button" class="icon-button" aria-label="下個月" title="下個月"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" aria-pressed="true">月</button><button type="button" data-view="week" aria-pressed="false">週</button></div></div>
-                    <div id="weekdays" class="weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
-                    <div id="calendar" class="calendar" aria-label="個人月曆"></div>
-                    <div id="weekList" class="week-list" role="group" aria-label="個人週班表" hidden></div>
+                <div class="calendar-panel" :class="{ month: !isWeek }">
+                    <div class="month-nav"><button id="periodLabel" type="button" class="period-label" aria-haspopup="dialog" :disabled="isWeek" :title="isWeek ? '' : '選擇年月'" @click="openPicker()"><span id="periodText"><template x-if="!isWeek"><span x-text="`${month.slice(0, 4)} 年 `"></span></template><template x-if="!isWeek"><span class="period-month" x-text="Number(month.slice(5))"></span></template><template x-if="!isWeek"><span> 月</span></template><template x-if="isWeek"><small class="period-year" x-text="weekYears"></small></template><template x-if="isWeek"><span x-text="weekRange"></span></template></span><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></button><button id="todayPeriod" type="button" class="today-button" :disabled="!todayPublished" @click="goCurrent()">今天</button><button id="prevPeriod" type="button" class="icon-button" :aria-label="stepTitles[0]" :title="stepTitles[0]" :disabled="prevDisabled" @click="step(-1)"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><button id="nextPeriod" type="button" class="icon-button" :aria-label="stepTitles[1]" :title="stepTitles[1]" :disabled="nextDisabled" @click="step(1)"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button><div class="view-toggle" role="group" aria-label="檢視方式"><button type="button" data-view="month" :aria-pressed="String(!isWeek)" @click="setView('month')">月</button><button type="button" data-view="week" :aria-pressed="String(isWeek)" @click="setView('week')">週</button></div></div>
+                    <div id="weekdays" class="weekdays" aria-hidden="true" :hidden="isWeek"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+                    <div id="calendar" class="calendar" aria-label="個人月曆" :hidden="isWeek" x-effect="calendarDays; $nextTick(() => sizeDays())">
+                        <template x-for="blank in offset" :key="`blank-${blank}`"><span></span></template>
+                        <template x-for="cell in calendarDays" :key="cell.date"><button type="button" :class="cell.className" :aria-label="cell.label" :aria-pressed="String(cell.date === selectedDate)" @click="select(cell.date)"><span class="day-number" x-text="cell.day"></span><span :class="cell.codeClass" x-text="cell.code"></span></button></template>
+                    </div>
+                    <div id="weekList" class="week-list" role="group" aria-label="個人週班表" :hidden="!isWeek">
+                        <template x-for="row in weekRows" :key="row.date"><button type="button" :class="row.className" :aria-pressed="String(row.date === selectedDate)" @click="selectRow(row.date)"><div class="week-day"><strong x-text="row.monthDay"></strong><small x-text="row.weekday"></small></div><span :class="row.codeClass" x-text="row.code"></span><div class="shift-text"><p :class="row.colorClass" x-text="row.label"></p><small :class="row.colorClass" x-text="row.time"></small></div></button></template>
+                    </div>
                 </div>
                 <div class="person-card">
-                    <section id="dayDetail" class="day-detail" aria-label="日期班別明細">
-                        <div class="info-row"><span class="info-label">日期</span><h3 id="selectedDate"></h3></div>
-                        <div class="info-row"><span class="info-label">班別</span><div id="selectedShift"></div></div>
+                    <section id="dayDetail" class="day-detail" aria-label="日期班別明細" x-ref="dayDetail">
+                        <div class="info-row"><span class="info-label">日期</span><h3 id="selectedDate" x-text="selected.dateLabel"></h3></div>
+                        <div class="info-row"><span class="info-label">班別</span><div id="selectedShift">
+                            <template x-if="selected.empty"><p class="empty" x-text="selected.empty"></p></template>
+                            <template x-if="!selected.empty"><div class="shift-detail"><span :class="selected.codeClass" x-text="selected.code"></span><div class="shift-text"><p :class="selected.colorClass" x-text="selected.label"></p><small :class="selected.colorClass" x-text="selected.time"></small></div></div></template>
+                        </div></div>
                     </section>
-                    <section id="colleagues" class="colleagues" aria-label="同班同事" hidden><h3 id="colleaguesTitle"></h3><div id="colleaguesList" class="chips"></div></section>
+                    <section id="colleagues" class="colleagues" aria-label="同班同事" x-ref="colleagues" :hidden="!insights.colleagues"><h3 id="colleaguesTitle" x-text="insights.colleagues?.length ? `同班同事 ${insights.colleagues.length} 人` : '當天沒有其他同班同事'"></h3><div id="colleaguesList" class="chips"><template x-for="mate in insights.colleagues ?? []" :key="mate.empId"><span :class="{ leader: mate.leader }" :title="mate.empId" x-text="mate.name"></span></template></div></section>
                 </div>
-                <div class="person-stats"><div id="statCounts" class="stat-counts"></div><p id="statStreak" class="stat-line"></p></div>
+                <div class="person-stats"><div id="statCounts" class="stat-counts"><em x-text="insights.scope"></em><template x-for="item in insights.counts" :key="item.id"><span><b :class="item.className" x-text="item.initial"></b><strong x-text="item.count"></strong></span></template></div><p id="statStreak" class="stat-line" x-text="insights.streak"></p></div>
+                <dialog id="periodDialog" class="period-dialog" aria-labelledby="pickerYear" x-ref="picker" @click="if ($event.target === $el) $el.close()" @close="pickerOpen = false">
+                    <div class="picker-year"><button id="prevYear" type="button" class="icon-button" aria-label="上一年" :disabled="pickerYear <= firstYear" @click="pickerYear = String(Number(pickerYear) - 1)"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><h2 id="pickerYear" x-text="`${pickerYear} 年`"></h2><button id="nextYear" type="button" class="icon-button" aria-label="下一年" :disabled="pickerYear >= lastYear" @click="pickerYear = String(Number(pickerYear) + 1)"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button></div>
+                    <div id="monthGrid" class="month-grid" role="group" aria-label="月份"><template x-for="item in pickerMonths" :key="item.value"><button type="button" :class="{ now: item.now }" :disabled="!item.published" :aria-pressed="String(item.value === month)" x-text="item.label" @click="pickMonth(item.value)"></button></template></div>
+                    <div class="dialog-actions"><button id="pickerClose" type="button" class="plain" @click="$refs.picker.close()">取消</button></div>
+                </dialog>
             </div>
         </section>
-        <section id="on-duty" aria-label="當日班表" hidden>
-            <div class="date-row"><label for="onDutyDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><input id="onDutyDate" type="date"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button><button id="goToday" type="button" class="plain">今天</button></div>
-            <div class="live-row metadata"><span id="liveDot" class="live-dot" aria-hidden="true"></span><span id="onDutyDateLabel"></span></div>
-            <p id="onDutyNotice" class="notice" hidden></p>
-            <div id="onDutySummary" class="summary"></div>
-            <div id="shiftFilter" class="filter-bar" role="group" aria-label="班別篩選"></div>
-            <div id="onDutyRoster" class="roster"></div>
-            <details id="unknownTimes" class="unknown-times" hidden><summary>時間未定義的排班</summary><div id="unknownRoster"></div></details>
+        <section id="on-duty" aria-label="當日班表" x-data="onDuty" hidden :hidden="$store.app.activeTab !== 'on-duty'">
+            <div class="date-row"><label for="onDutyDate">日期</label><button id="prevDay" type="button" class="icon-button" aria-label="前一天" title="前一天" :disabled="prevDisabled" @click="step(-1)"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><input id="onDutyDate" type="date" :min="range.start" :max="range.end" x-model="date" @change="picked()"><button id="nextDay" type="button" class="icon-button" aria-label="後一天" title="後一天" :disabled="nextDisabled" @click="step(1)"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button><button id="goToday" type="button" class="plain" @click="goToday()">今天</button></div>
+            <div class="live-row metadata"><span id="liveDot" class="live-dot" :class="{ warn: status.warn }" aria-hidden="true"></span><span id="onDutyDateLabel" x-text="label"></span></div>
+            <p id="onDutyNotice" class="notice" hidden :hidden="!notice" x-text="notice"></p>
+            <div id="onDutySummary" class="summary"><template x-for="[name, count] in summary" :key="name"><span><strong x-text="count"></strong><span x-text="name"></span></span></template></div>
+            <div id="shiftFilter" class="filter-bar" role="group" aria-label="班別篩選"><template x-for="item in filters" :key="item.cat"><button type="button" :data-cat="item.cat" :title="item.label" :aria-label="item.label" :aria-pressed="String(filter === item.id)" :disabled="item.id === 'now' && !live" @click="setFilter(item.id)"><svg class="icon" aria-hidden="true"><use :href="`#icon-${item.cat}`"/></svg><span x-text="item.short"></span></button></template></div>
+            <div id="onDutyRoster" class="roster">
+                <template x-if="!groups.length"><p class="empty" x-text="emptyMessage"></p></template>
+                <template x-for="group in groups" :key="group.key"><section class="roster-group"><div class="group-heading"><h3 :class="group.colorClass" x-text="group.title"></h3><span :class="group.colorClass" x-text="group.meta"></span></div><div class="roster-people" role="list"><template x-for="person in group.people" :key="person.empId"><div role="listitem" class="roster-item" :class="{ me: person.me }"><strong :class="{ leader: person.leader }"><span x-text="person.name"></span><small x-text="person.empId"></small></strong><span class="roster-tag" x-text="person.code"></span></div></template></div></section></template>
+            </div>
+            <details id="unknownTimes" class="unknown-times" hidden :hidden="!unknown.length"><summary>時間未定義的排班</summary><div id="unknownRoster">
+                <template x-for="group in unknownGroups" :key="group.key"><section class="roster-group"><div class="group-heading"><h3 :class="group.colorClass" x-text="group.title"></h3><span :class="group.colorClass" x-text="group.meta"></span></div><div class="roster-people" role="list"><template x-for="person in group.people" :key="person.empId"><div role="listitem" class="roster-item" :class="{ me: person.me }"><strong :class="{ leader: person.leader }"><span x-text="person.name"></span><small x-text="person.empId"></small></strong><span class="roster-tag" x-text="person.code"></span></div></template></div></section></template>
+            </div></details>
         </section>
     </main>
-    <datalist id="empList"></datalist>
-    <dialog id="empDialog" aria-labelledby="empDialogTitle">
-        <form id="empDialogForm" method="dialog" novalidate>
+    <datalist id="empList" x-data><template x-for="person in $store.app.suggestions" :key="person.empId"><option :value="person.empId" :label="person.name"></option></template></datalist>
+    <dialog id="empDialog" aria-labelledby="empDialogTitle" x-data="employeeDialog" @close="closed()">
+        <form id="empDialogForm" method="dialog" novalidate @submit.prevent="submit()">
             <h2 id="empDialogTitle">請輸入員工編號</h2>
             <p class="metadata">輸入後會記住在這個瀏覽器，下次不需再輸入。</p>
-            <input id="empDialogId" type="text" list="empList" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="員工編號" aria-label="員工編號" autofocus>
-            <p id="empDialogError" class="field-error" role="alert" hidden>此工號不在本次班表資料中，請確認工號。</p>
-            <div class="dialog-actions"><button id="empDialogSkip" type="button" class="plain">稍後再說</button><button type="submit" class="primary">確定</button></div>
+            <input id="empDialogId" type="text" list="empList" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="員工編號" aria-label="員工編號" autofocus x-model="value" @input="suggest()" :aria-invalid="invalid ? 'true' : false">
+            <p id="empDialogError" class="field-error" role="alert" hidden :hidden="!invalid">此工號不在本次班表資料中，請確認工號。</p>
+            <div class="dialog-actions"><button id="empDialogSkip" type="button" class="plain" @click="$root.close()">稍後再說</button><button type="submit" class="primary">確定</button></div>
         </form>
-    </dialog>
-    <dialog id="periodDialog" class="period-dialog" aria-labelledby="pickerYear">
-        <div class="picker-year"><button id="prevYear" type="button" class="icon-button" aria-label="上一年"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-left"/></svg></button><h2 id="pickerYear"></h2><button id="nextYear" type="button" class="icon-button" aria-label="下一年"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button></div>
-        <div id="monthGrid" class="month-grid" role="group" aria-label="月份"></div>
-        <div class="dialog-actions"><button id="pickerClose" type="button" class="plain">取消</button></div>
     </dialog>
     <noscript><p class="notice error">請啟用 JavaScript 以查看班表。</p></noscript>
 </body>

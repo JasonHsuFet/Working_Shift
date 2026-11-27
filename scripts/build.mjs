@@ -1,4 +1,4 @@
-// Extracts every month sheet of data/All_YYYY.xlsx into dist/data/YYYY-MM.json and copies the SPA (web/) into dist/.
+// data/All_YYYY.xlsx -> dist/data/YYYY-MM.json and index.json, plus the workbooks, web/ and Alpine.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,19 +16,22 @@ function build() {
         const year = Number(/^All_(\d{4})\.xlsx$/.exec(file)?.[1]);
         if (!year) continue;
         const workbook = readWorkbook(file);
+        fs.copyFileSync(path.join(DATA, file), path.join(DIST, 'data', file));
         for (const sheet of workbook.SheetNames) {
             const month = /^(0[1-9]|1[0-2])$/.test(sheet.trim()) ? Number(sheet) : 0;
             if (!month) {
                 console.warn(`warning: ${file} 工作表「${sheet}」不是月份班表，已略過`);
                 continue;
             }
-            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs, sheetLeaders(file, workbook, sheet));
+            const data = parseMonthSheet(sheetRows(workbook, sheet), year, month, ids, defs, sheetLeaders(workbook, sheet));
             if (!data) throw new Error(`${file} 工作表「${sheet}」前 10 列找不到日期欄（1、2、3…）`);
             data.warnings.unshift(...dbWarnings);
             const key = data.dates[0].slice(0, 7);
             if (months.includes(key)) throw new Error(`${key} 重複出現在多個檔案`);
             months.push(key);
             data.warnings.forEach(warning => console.warn(`warning: ${warning}`));
+            // Build log only: a month still being written is expected.
+            if (data.writtenDays[key] < data.dates.length) console.warn(`warning: ${key} 日期欄只寫到第 ${data.writtenDays[key]} 天，之後的日期顯示為未排班`);
             fs.writeFileSync(path.join(DIST, 'data', `${key}.json`), JSON.stringify(data));
             console.log(`${file} ${sheet} -> data/${key}.json (${data.employees.length} 人, ${data.records.length} 筆)`);
         }
@@ -36,9 +39,8 @@ function build() {
     if (!months.length) throw new Error('data/ 沒有任何 All_YYYY.xlsx 月份班表');
     fs.writeFileSync(path.join(DIST, 'data', 'index.json'), JSON.stringify({ months: months.sort(), generatedAt: new Date().toISOString() }));
     fs.cpSync(path.join(ROOT, 'web'), DIST, { recursive: true });
-    const year = new Date().getFullYear();
-    const annualFile = `All_${year}.xlsx`;
-    fs.copyFileSync(path.join(DATA, annualFile), path.join(DIST, 'data', annualFile));
+    // Served from the site (no CDN): works offline, version pinned by pnpm-lock.yaml.
+    fs.copyFileSync(path.join(ROOT, 'node_modules/alpinejs/dist/module.esm.min.js'), path.join(DIST, 'js/alpine.js'));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) build();
